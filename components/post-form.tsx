@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select } from './ui/select';
@@ -13,6 +14,7 @@ const types = [
 ];
 
 export function PostForm() {
+  const router = useRouter();
   const [content, setContent] = useState('');
   const [type, setType] = useState('GENERAL');
   const [loading, setLoading] = useState(false);
@@ -33,7 +35,8 @@ export function PostForm() {
       if (!response.ok) throw new Error('Unable to post');
       setContent('');
       setType('GENERAL');
-      setMessage('Post published! Refresh to see it in the feed.');
+      setMessage('Post published.');
+      router.refresh();
     } catch (error) {
       setMessage('Failed to create post.');
     } finally {
@@ -42,10 +45,10 @@ export function PostForm() {
   }
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="app-card p-5">
       <div className="flex items-center justify-between gap-4 mb-4">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">Share a quick update</h2>
+          <h2 className="section-title">Share a quick update</h2>
           <p className="text-sm text-slate-500">Post a question, opportunity, or insight with the campus network.</p>
         </div>
       </div>
@@ -58,7 +61,7 @@ export function PostForm() {
             ))}
           </Select>
           <Button type="submit" disabled={loading} className="w-full">
-            {loading ? 'Posting…' : 'Post update'}
+            {loading ? 'Posting...' : 'Post update'}
           </Button>
         </div>
         {message ? <p className="text-sm text-slate-500">{message}</p> : null}

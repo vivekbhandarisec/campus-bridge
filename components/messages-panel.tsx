@@ -83,16 +83,17 @@ export function MessagesPanel({ peers }: MessagesPanelProps) {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
-      <aside className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Conversations</h2>
+    <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+      <aside className="app-card p-4">
+        <p className="section-label">Inbox</p>
+        <h2 className="section-title mt-1">Conversations</h2>
         <div className="mt-4 space-y-3">
           {peers.length > 0 ? peers.map((peer) => (
             <button
               type="button"
               key={peer.userId}
               onClick={() => router.push(`/messages?user=${peer.userId}`)}
-              className={`w-full rounded-3xl p-4 text-left ${peer.userId === selectedUser ? 'bg-brand-50 text-brand-900' : 'bg-slate-50 text-slate-700'}`}
+              className={`w-full rounded-xl border p-3 text-left transition ${peer.userId === selectedUser ? 'border-sky-500/20 bg-sky-50 text-sky-500' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
             >
               <p className="font-semibold">{peer.name}</p>
               <p className="mt-1 text-sm text-slate-500">{peer.lastMessage}</p>
@@ -101,18 +102,18 @@ export function MessagesPanel({ peers }: MessagesPanelProps) {
         </div>
       </aside>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold text-slate-900">Chat</h2>
+      <section className="app-card overflow-hidden">
+        <div className="flex items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4">
+          <h2 className="section-title">Chat</h2>
           <p className="text-sm text-slate-500">Select a peer to start messaging.</p>
         </div>
 
-        <div className="mt-6 min-h-[320px] space-y-4">
+        <div className="min-h-[360px] space-y-4 bg-slate-50/70 p-5">
           {loading ? (
-            <p className="text-sm text-slate-500">Loading conversation…</p>
+            <p className="text-sm text-slate-500">Loading conversation...</p>
           ) : messages.length > 0 ? (
             messages.map((message) => (
-              <div key={message.id} className={`rounded-3xl p-4 ${message.senderId === 'me' ? 'bg-brand-600 text-white self-end' : 'bg-slate-100 text-slate-700'}`}>
+              <div key={message.id} className={`max-w-[80%] rounded-2xl p-4 ${message.senderId === 'me' ? 'ml-auto bg-sky-500 text-white' : 'border border-slate-200 bg-white text-slate-700'}`}>
                 <p className="text-sm leading-7">{message.content}</p>
                 <p className="mt-2 text-xs text-slate-500">{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
               </div>
@@ -122,11 +123,11 @@ export function MessagesPanel({ peers }: MessagesPanelProps) {
           )}
         </div>
 
-        <div className="mt-6 flex gap-3">
+        <div className="flex gap-3 border-t border-slate-200 bg-white p-5">
           <Input value={text} onChange={(event) => setText(event.target.value)} placeholder="Write a message..." />
           <Button type="button" onClick={sendMessage}>Send</Button>
         </div>
-        {error ? <p className="mt-3 text-sm text-rose-600">{error}</p> : null}
+        {error ? <p className="mt-3 text-sm text-danger-600">{error}</p> : null}
       </section>
     </div>
   );

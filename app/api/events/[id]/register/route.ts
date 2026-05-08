@@ -26,8 +26,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   });
 
   if (registration) {
-    await prisma.eventRegistration.delete({ where: { id: registration.id } });
-    return NextResponse.json({ message: 'Unregistered' });
+    const updated = await prisma.eventRegistration.update({
+      where: { id: registration.id },
+      data: { lookingForTeam },
+    });
+    return NextResponse.json({ message: 'Registration updated', registration: updated });
   }
 
   await prisma.eventRegistration.create({

@@ -16,7 +16,7 @@ export default async function CollegeAdminPage() {
 
   if (!college) {
     return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center text-slate-700">
+      <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-700">
         You do not have college admin access.
       </div>
     );
@@ -24,13 +24,13 @@ export default async function CollegeAdminPage() {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-navy p-8 text-white shadow-soft">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.24em] text-brand-700">College admin</p>
-            <h1 className="text-3xl font-semibold text-slate-900">{college.name} dashboard</h1>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">College admin</p>
+            <h1 className="page-title text-white">{college.name} dashboard</h1>
           </div>
-          <div className="rounded-3xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white">
             Total registrations: {college.events.reduce((sum, event) => sum + event.registrations.length, 0)}
           </div>
         </div>
@@ -38,7 +38,7 @@ export default async function CollegeAdminPage() {
 
       <div className="grid gap-6">
         {college.events.map((event) => (
-          <div key={event.id} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div key={event.id} className="app-card p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900">{event.title}</h2>

@@ -41,29 +41,31 @@ export function MatchPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-4">
-          <p className="text-sm uppercase tracking-[0.24em] text-brand-700">Matched using AI</p>
-          <h1 className="mt-3 text-3xl font-semibold text-slate-900">Your top alumni mentors</h1>
+      <div className="app-card p-6">
+        <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+          <p className="section-label">Matched using AI</p>
+          <h1 className="page-title mt-2">Your top alumni mentors</h1>
           <p className="mt-2 text-sm text-slate-500">Based on your skills, domain, and career goals.</p>
-        </div>
-        <div className="rounded-3xl bg-slate-50 p-5 text-sm text-slate-600">
-          AI score uses profile embeddings to match you with available alumni mentors.
+          </div>
+          <div className="rounded-xl border border-teal-600/10 bg-teal-50 px-4 py-3 text-sm text-slate-600">
+            Profile embeddings rank available alumni by fit.
+          </div>
         </div>
       </div>
 
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((key) => (
-            <div key={key} className="h-44 rounded-3xl bg-slate-100 animate-pulse" />
+            <div key={key} className="h-44 animate-pulse rounded-2xl bg-slate-100" />
           ))}
         </div>
       ) : error ? (
-        <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">{error}</div>
+        <div className="rounded-2xl border border-danger-200 bg-danger-50 p-6 text-sm text-danger-600">{error}</div>
       ) : matches.length === 0 ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 text-slate-600">No matches available yet. Complete your profile and check again.</div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-600">No matches available yet. Complete your profile and check again.</div>
       ) : (
-        <div className="space-y-6">
+        <div className="grid gap-5 lg:grid-cols-2">
           {matches.map((match) => (
             <MatchCard key={match.id} user={match} onMessage={handleMessage} />
           ))}

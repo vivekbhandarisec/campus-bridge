@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { EventCard } from './event-card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -14,6 +15,7 @@ interface EventsBoardProps {
 }
 
 export function EventsBoard({ events, currentRole }: EventsBoardProps) {
+  const router = useRouter();
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('UPCOMING');
   const [tagFilter, setTagFilter] = useState('ALL');
@@ -61,7 +63,8 @@ export function EventsBoard({ events, currentRole }: EventsBoardProps) {
       setMessage('Could not register.');
       return;
     }
-    setMessage('Registration updated. Refresh to see latest status.');
+    setMessage('Registration updated.');
+    router.refresh();
   };
 
   const createEvent = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -86,26 +89,28 @@ export function EventsBoard({ events, currentRole }: EventsBoardProps) {
       setMessage('Unable to post event.');
       return;
     }
-    setMessage('Event created. Refresh to see it on the board.');
+    setMessage('Event created.');
     setShowCreate(false);
+    router.refresh();
   };
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="app-card p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Events board</h1>
+            <p className="section-label">Campus opportunities</p>
+            <h1 className="page-title mt-2">Events board</h1>
             <p className="mt-2 text-sm text-slate-500">Browse hackathons, CTFs, internships and workshops in your campus network.</p>
           </div>
           {currentRole === 'COLLEGE_ADMIN' && (
-            <Button type="button" onClick={() => setShowCreate((value) => !value)}>
+            <Button type="button" onClick={() => setShowCreate((value) => !value)} className="bg-teal-600 shadow-none hover:bg-teal-600/90 hover:shadow-lift">
               {showCreate ? 'Hide form' : '+ Post Event'}
             </Button>
           )}
         </div>
         {showCreate && (
-          <form onSubmit={createEvent} className="mt-6 space-y-4 rounded-3xl border border-slate-200 bg-slate-50 p-6">
+          <form onSubmit={createEvent} className="mt-6 space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <Input placeholder="Event title" value={formData.title} onChange={(event) => setFormData({ ...formData, title: event.target.value })} required />
               <Select value={formData.type} onChange={(event) => setFormData({ ...formData, type: event.target.value })}>
@@ -128,13 +133,13 @@ export function EventsBoard({ events, currentRole }: EventsBoardProps) {
               <Input placeholder="Tags, comma separated" value={formData.tags} onChange={(event) => setFormData({ ...formData, tags: event.target.value })} />
               <Input placeholder="Event link" value={formData.link} onChange={(event) => setFormData({ ...formData, link: event.target.value })} />
             </div>
-            <Button type="submit">Create event</Button>
+            <Button type="submit" className="bg-teal-600 shadow-none hover:bg-teal-600/90 hover:shadow-lift">Create event</Button>
           </form>
         )}
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="grid gap-4 md:grid-cols-3">
+      <div className="app-card p-4">
+        <div className="grid gap-3 md:grid-cols-3">
           <Select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
             <option value="ALL">All types</option>
             <option value="HACKATHON">Hackathon</option>
@@ -156,9 +161,9 @@ export function EventsBoard({ events, currentRole }: EventsBoardProps) {
         </div>
       </div>
 
-      {message ? <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">{message}</div> : null}
+      {message ? <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">{message}</div> : null}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2">
         {filtered.length > 0 ? filtered.map((event) => (
           <div key={event.id}>
             <EventCard event={event} />
@@ -169,7 +174,7 @@ export function EventsBoard({ events, currentRole }: EventsBoardProps) {
             </div>
           </div>
         )) : (
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-10 text-center text-slate-600">No events match your filters yet.</div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-10 text-center text-slate-600">No events match your filters yet.</div>
         )}
       </div>
     </div>

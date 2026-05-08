@@ -22,6 +22,45 @@ async function createProfileEmbedding(profileText: string) {
   });
 }
 
+function collegeLocation(name: string) {
+  if (name === 'GBPIET Pauri') {
+    return { city: 'Pauri Garhwal', state: 'Uttarakhand' };
+  }
+
+  if (name === 'Other') {
+    return { city: 'Unknown', state: 'Unknown' };
+  }
+
+  const city = name.split(' ').slice(-1)[0] || 'Unknown';
+  return { city, state: 'India' };
+}
+
+async function syncCollegeAdmin(collegeName: string, userId: string, role: string) {
+  if (role !== 'COLLEGE_ADMIN') {
+    await prisma.college.updateMany({
+      where: { adminClerkId: userId },
+      data: { adminClerkId: null },
+    });
+    return;
+  }
+
+  const location = collegeLocation(collegeName);
+  await prisma.college.upsert({
+    where: { name: collegeName },
+    update: {
+      adminClerkId: userId,
+      verified: true,
+      ...location,
+    },
+    create: {
+      name: collegeName,
+      adminClerkId: userId,
+      verified: true,
+      ...location,
+    },
+  });
+}
+
 export async function PUT(req: Request) {
   try {
     const { userId } = auth();
@@ -66,6 +105,8 @@ export async function PUT(req: Request) {
         bio, skills, domain, "currentCompany", "avatarUrl", "campusCred",
         "isAvailable", "createdAt"
     `;
+
+    await syncCollegeAdmin(college, userId, normalizedRole);
 
     return NextResponse.json(Array.isArray(users) ? users[0] : users);
   } catch (error) {

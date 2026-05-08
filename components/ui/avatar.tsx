@@ -19,7 +19,7 @@ const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(({ src, name, class
   return (
     <div
       ref={ref}
-      className={cn('inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700', className)}
+      className={cn('inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-teal-600 text-sm font-semibold text-white', className)}
       {...props}
     >
       {src ? <img src={src} alt={name} className="h-full w-full rounded-full object-cover" /> : initials}

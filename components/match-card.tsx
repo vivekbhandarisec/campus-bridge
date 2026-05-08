@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+import { MessageCircle, Sparkles } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Avatar } from './ui/avatar';
 import { badgeVariant, formatDate } from '@/lib/utils';
@@ -19,37 +21,41 @@ interface MatchCardProps {
 
 export function MatchCard({ user, onMessage }: MatchCardProps) {
   const progress = Math.max(0, Math.min(100, user.matchScore));
-  const barClass = progress >= 70 ? 'bg-emerald-500' : progress >= 50 ? 'bg-amber-500' : 'bg-slate-400';
-
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="app-card p-5 transition hover:border-slate-300">
       <div className="flex items-start gap-4">
         <Avatar src={user.avatarUrl} name={user.name} />
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-lg font-semibold text-slate-900">{user.name}</p>
+            <p className="text-[17px] font-semibold text-navy">{user.name}</p>
             <span className={badgeVariant('ALUMNI')}>ALUMNI</span>
           </div>
           <p className="text-sm text-slate-500">{user.currentCompany || 'Experienced mentor'}</p>
         </div>
-        <div className="text-right">
-          <p className="text-xs uppercase text-slate-500">Match</p>
-          <p className="text-2xl font-bold text-slate-900">{progress}%</p>
+        <div className="grid h-16 w-16 place-items-center rounded-full bg-[conic-gradient(#2563EB_var(--score),#E2E8F0_0)] p-1" style={{ '--score': `${progress}%` } as CSSProperties}>
+          <div className="grid h-full w-full place-items-center rounded-full bg-white">
+            <div className="text-center">
+              <p className="font-mono text-sm font-medium text-reward-500">{progress}%</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Match</p>
+            </div>
+          </div>
         </div>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         {user.skills.slice(0, 4).map((skill) => (
-          <Badge key={skill} className="bg-slate-100 text-slate-700">{skill}</Badge>
+          <Badge key={skill} className="border-slate-200 bg-slate-100 text-slate-700">{skill}</Badge>
         ))}
       </div>
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
-        <div className={`h-full rounded-full ${barClass}`} style={{ width: `${progress}%` }} />
+      <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-200">
+        <div className="h-full rounded-full bg-gradient-to-r from-sky-500 to-teal-600" style={{ width: `${progress}%` }} />
       </div>
       <div className="mt-5 flex flex-wrap gap-3">
-        <button onClick={() => onMessage(user.id)} className="rounded-2xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
+        <button onClick={() => onMessage(user.id)} className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-sky-500 px-4 text-sm font-semibold text-white shadow-action transition hover:-translate-y-px hover:bg-sky-400 hover:shadow-actionHover">
+          <MessageCircle className="h-4 w-4" />
           Message
         </button>
-        <button className="rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+        <button className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-sky-500/40 bg-sky-50 px-4 text-sm font-semibold text-sky-500 hover:bg-white">
+          <Sparkles className="h-4 w-4" />
           Why this match?
         </button>
       </div>

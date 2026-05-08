@@ -99,16 +99,16 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-16 px-4 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-3xl rounded-[2rem] border border-slate-200 bg-white p-10 shadow-soft">
+    <div className="min-h-screen bg-slate-50 px-4 py-16 sm:px-8">
+      <div className="mx-auto max-w-3xl rounded-2xl border border-slate-200 bg-white p-8 shadow-soft sm:p-10">
         <div className="mb-8">
-          <p className="text-sm uppercase tracking-[0.24em] text-brand-700">Onboarding</p>
-          <h1 className="mt-4 text-3xl font-semibold text-slate-900">Complete your CampusBridge profile</h1>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-500">Onboarding</p>
+          <h1 className="page-title mt-4">Complete your CampusBridge profile</h1>
           <p className="mt-2 text-sm text-slate-500">This information powers AI matching and event recommendations for your college network.</p>
         </div>
 
         <SignedOut>
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-700">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-700">
             <p>You need to sign in first.</p>
             <div className="mt-4 flex justify-center">
               <SignInButton mode="modal">
@@ -120,12 +120,12 @@ export default function OnboardingPage() {
 
         <SignedIn>
           <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
               <p className="text-sm text-slate-500">Step {step} of {totalSteps}</p>
               {step === 1 && (
                 <div className="space-y-4 pt-4">
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">Role</label>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-700">Role</label>
                     <div className="grid gap-3 sm:grid-cols-3">
                       {roles.map((option) => (
                         <button
@@ -135,7 +135,7 @@ export default function OnboardingPage() {
                             setRole(option.value);
                             setStep((current) => Math.min(current, option.value === 'ALUMNI' ? 3 : 2));
                           }}
-                          className={`rounded-3xl border px-4 py-3 text-left text-sm ${role === option.value ? 'border-brand-600 bg-white text-slate-900 shadow-sm' : 'border-slate-200 bg-slate-100 text-slate-600'}`}
+                          className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${role === option.value ? 'border-sky-500 bg-sky-50 text-sky-500 shadow-sm' : 'border-slate-200 bg-slate-100 text-slate-600 hover:bg-white'}`}
                         >
                           <p className="font-semibold">{option.label}</p>
                           <p className="text-xs text-slate-500">{option.description}</p>
@@ -153,7 +153,7 @@ export default function OnboardingPage() {
               {step === 2 && (
                 <div className="space-y-6 pt-4">
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">College</label>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-700">College</label>
                     <Select value={college} onChange={(event) => setCollege(event.target.value)} required>
                       <option value="">Choose your college</option>
                       {colleges.map((item) => (
@@ -164,11 +164,11 @@ export default function OnboardingPage() {
                   {role !== 'COLLEGE_ADMIN' && (
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
-                        <label className="mb-2 block text-sm font-semibold text-slate-700">Branch</label>
+                        <label className="mb-2 block text-[13px] font-semibold text-slate-700">Branch</label>
                         <Input value={branch} onChange={(event) => setBranch(event.target.value)} required />
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm font-semibold text-slate-700">Graduation year</label>
+                        <label className="mb-2 block text-[13px] font-semibold text-slate-700">Graduation year</label>
                         <Select value={graduationYear} onChange={(event) => setGraduationYear(event.target.value)}>
                           <option value="">Choose year</option>
                           {Array.from({ length: 8 }, (_, index) => {
@@ -181,7 +181,7 @@ export default function OnboardingPage() {
                   )}
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label className="mb-2 block text-sm font-semibold text-slate-700">Domain</label>
+                      <label className="mb-2 block text-[13px] font-semibold text-slate-700">Domain</label>
                       <Select value={domain} onChange={(event) => setDomain(event.target.value)} required>
                         <option value="">Choose your focus area</option>
                         {domains.map((item) => (
@@ -190,14 +190,14 @@ export default function OnboardingPage() {
                       </Select>
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm font-semibold text-slate-700">Skills</label>
+                      <label className="mb-2 block text-[13px] font-semibold text-slate-700">Skills</label>
                       <div className="flex flex-wrap gap-2">
                         {skillsOptions.map((skill) => (
                           <button
                             key={skill}
                             type="button"
                             onClick={() => toggleSkill(skill)}
-                            className={`rounded-full border px-3 py-2 text-sm ${skills.includes(skill) ? 'border-brand-600 bg-brand-100 text-brand-800' : 'border-slate-200 bg-white text-slate-700'}`}
+                            className={`rounded-full border px-3 py-2 text-[12.5px] font-semibold transition ${skills.includes(skill) ? 'border-sky-500 bg-sky-50 text-sky-500' : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-white'}`}
                           >
                             {skill}
                           </button>
@@ -211,14 +211,14 @@ export default function OnboardingPage() {
               {step === 3 && role === 'ALUMNI' && (
                 <div className="space-y-6 pt-4">
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">Current company</label>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-700">Current company</label>
                     <Input value={currentCompany} onChange={(event) => setCurrentCompany(event.target.value)} required />
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">Bio</label>
+                    <label className="mb-2 block text-[13px] font-semibold text-slate-700">Bio</label>
                     <Textarea value={bio} onChange={(event) => setBio(event.target.value)} rows={4} required />
                   </div>
-                  <div className="flex items-center gap-3 rounded-3xl bg-slate-100 p-4">
+                  <div className="flex items-center gap-3 rounded-2xl border border-teal-600/10 bg-teal-50 p-4">
                     <div>
                       <p className="font-semibold text-slate-900">Available to mentor</p>
                       <p className="text-sm text-slate-500">Toggle your availability for student matches.</p>
@@ -226,7 +226,7 @@ export default function OnboardingPage() {
                     <button
                       type="button"
                       onClick={() => setIsAvailable((value) => !value)}
-                      className={`ml-auto rounded-full px-4 py-2 text-sm font-semibold ${isAvailable ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-700'}`}
+                      className={`ml-auto rounded-full px-4 py-2 text-sm font-semibold ${isAvailable ? 'bg-teal-600 text-white' : 'bg-slate-200 text-slate-700'}`}
                     >
                       {isAvailable ? 'Yes' : 'No'}
                     </button>
@@ -238,7 +238,7 @@ export default function OnboardingPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex gap-3">
                 {step > 1 && (
-                  <Button type="button" onClick={prevStep} className="bg-slate-100 text-slate-700 hover:bg-slate-200">
+                  <Button type="button" onClick={prevStep} className="border border-slate-200 bg-slate-100 text-slate-700 shadow-none hover:bg-slate-200 hover:shadow-none">
                     Back
                   </Button>
                 )}
@@ -248,7 +248,7 @@ export default function OnboardingPage() {
               </div>
               <p className="text-sm text-slate-500">Signed in as {user?.fullName || userEmail}</p>
             </div>
-            {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+            {error ? <p className="text-sm text-danger-600">{error}</p> : null}
           </form>
         </SignedIn>
       </div>

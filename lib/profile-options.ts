@@ -9,6 +9,7 @@ export const domains = ['backend', 'ml', 'frontend', 'mobile', 'devops', 'data']
 export const skillsOptions = ['Node.js', 'PostgreSQL', 'Docker', 'React', 'Python', 'AWS', 'Kubernetes', 'SQL'] as const;
 
 export const colleges = [
+  'GBPIET Pauri',
   'IIT Delhi',
   'IIT Bombay',
   'IIT Madras',
