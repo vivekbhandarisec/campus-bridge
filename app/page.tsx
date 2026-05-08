@@ -1,7 +1,5 @@
-import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 
 async function getSummary() {
   if (!process.env.DATABASE_URL || !prisma) {
@@ -38,15 +36,15 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
-              <Link href="/sign-in" className="rounded-3xl bg-brand-600 px-6 py-4 text-center text-sm font-semibold text-white shadow-sm hover:bg-brand-700">
+              <a href="/sign-in" className="rounded-3xl bg-brand-600 px-6 py-4 text-center text-sm font-semibold text-white shadow-sm hover:bg-brand-700">
                 Join as Student
-              </Link>
-              <Link href="/sign-in" className="rounded-3xl border border-slate-200 px-6 py-4 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              </a>
+              <a href="/sign-in" className="rounded-3xl border border-slate-200 px-6 py-4 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">
                 Join as Alumni
-              </Link>
-              <Link href="/sign-in" className="rounded-3xl border border-slate-200 px-6 py-4 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              </a>
+              <a href="/sign-in" className="rounded-3xl border border-slate-200 px-6 py-4 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">
                 Register your College
-              </Link>
+              </a>
             </div>
           </div>
 
@@ -84,9 +82,9 @@ export default async function HomePage() {
               <p className="text-sm uppercase tracking-[0.24em] text-brand-100">Demo flow</p>
               <p className="mt-2 text-base leading-7 text-white/90">Sign in, complete onboarding, view AI mentor matches, join a hackathon, and connect with recruiters.</p>
             </div>
-            <Link href="/sign-in" className="inline-flex rounded-3xl bg-white px-6 py-3 text-sm font-semibold text-brand-700 shadow-sm hover:bg-slate-100">
+            <a href="/sign-in" className="inline-flex rounded-3xl bg-white px-6 py-3 text-sm font-semibold text-brand-700 shadow-sm hover:bg-slate-100">
               Start demo
-            </Link>
+            </a>
           </div>
         </div>
       </div>
