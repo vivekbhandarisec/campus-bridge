@@ -4,13 +4,18 @@ import type { EventType } from '@prisma/client';
 import prisma from '@/lib/prisma';
 
 export async function GET(req: Request) {
+  const { userId } = auth();
+  if (!userId) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
   const url = new URL(req.url);
   const type = url.searchParams.get('type');
   const eventType = type && type !== 'ALL' ? (type as EventType) : undefined;
 
   const events = await prisma.event.findMany({
     where: eventType ? { type: eventType } : undefined,
-    include: { college: true },
+    include: { college: { select: { name: true } } },
     orderBy: { startDate: 'asc' },
   });
 
@@ -52,6 +57,7 @@ export async function POST(req: Request) {
       tags: Array.isArray(tags) ? tags : [],
       link,
     },
+    include: { college: { select: { name: true } } },
   });
 
   return NextResponse.json(event);

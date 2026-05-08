@@ -21,13 +21,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const body = await req.json();
   const lookingForTeam = Boolean(body.lookingForTeam);
-  const registration = await prisma.eventRegistration.findFirst({
-    where: { userId: currentUser.id, eventId: event.id },
+  const registration = await prisma.eventRegistration.findUnique({
+    where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
   });
 
   if (registration) {
     const updated = await prisma.eventRegistration.update({
-      where: { id: registration.id },
+      where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
       data: { lookingForTeam },
     });
     return NextResponse.json({ message: 'Registration updated', registration: updated });

@@ -1,6 +1,9 @@
 import prisma from '@/lib/prisma';
-import { Badge } from '@/components/ui/badge';
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
 import { ArrowRight, CalendarDays, CheckCircle2, MessageSquare, Sparkles, Trophy, Users } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { isProfileComplete } from '@/lib/profile-completion';
 
 async function getSummary() {
   if (!process.env.DATABASE_URL || !prisma) {
@@ -20,6 +23,15 @@ async function getSummary() {
 }
 
 export default async function HomePage() {
+  const { userId } = auth();
+  if (userId) {
+    const user = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      select: { college: true, domain: true, skills: true },
+    });
+    redirect(user && isProfileComplete(user) ? '/feed' : '/onboarding');
+  }
+
   const { users, events } = await getSummary();
 
   return (

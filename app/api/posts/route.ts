@@ -3,11 +3,29 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { awardCampusCred } from '@/lib/cred';
 
-export async function GET() {
+export async function GET(req: Request) {
+  const { userId } = auth();
+  if (!userId) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
+  const url = new URL(req.url);
+  const cursor = url.searchParams.get('cursor');
+  const limit = Math.min(Number(url.searchParams.get('limit')) || 20, 50);
+
   const posts = await prisma.post.findMany({
     orderBy: { createdAt: 'desc' },
-    take: 20,
-    include: { author: true },
+    take: limit,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    include: {
+      author: {
+        select: {
+          name: true,
+          college: true,
+          avatarUrl: true,
+        },
+      },
+    },
   });
   return NextResponse.json(posts);
 }
@@ -34,8 +52,17 @@ export async function POST(req: Request) {
       content,
       type,
     },
+    include: {
+      author: {
+        select: {
+          name: true,
+          college: true,
+          avatarUrl: true,
+        },
+      },
+    },
   });
 
-  await awardCampusCred(currentUser.id, 10, 'posted_event');
+  await awardCampusCred(currentUser.id, 10, 'created_post');
   return NextResponse.json(post);
 }

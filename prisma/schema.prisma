@@ -3,37 +3,35 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id              String   @id @default(cuid())
-  clerkId         String   @unique
-  email           String   @unique
-  name            String
-  role            Role     @default(STUDENT)
-  college         String
-  branch          String?
-  graduationYear  Int?
-  bio             String?
-  skills          String[]
-  domain          String? 
-  currentCompany  String?
-  linkedinUrl     String?
-  githubUrl       String?
-  avatarUrl       String?
-  campusCred      Int      @default(0)
-  isAvailable     Boolean  @default(true)
-  embedding       Unsupported("vector")?
-  createdAt       DateTime @default(now())
-
-  posts           Post[]
-  sentMessages     Message[] @relation("SentMessages")
-  receivedMessages Message[] @relation("ReceivedMessages")
+  id                 String                 @id @default(cuid())
+  clerkId            String                 @unique
+  email              String                 @unique
+  name               String
+  role               Role                   @default(STUDENT)
+  college            String
+  branch             String?
+  graduationYear     Int?
+  bio                String?
+  skills             String[]
+  domain             String?
+  currentCompany     String?
+  linkedinUrl        String?
+  githubUrl          String?
+  avatarUrl          String?
+  campusCred         Int                    @default(0)
+  isAvailable        Boolean                @default(true)
+  embedding          Unsupported("vector")?
+  posts              Post[]
+  sentMessages       Message[]              @relation("SentMessages")
+  receivedMessages   Message[]              @relation("ReceivedMessages")
   eventRegistrations EventRegistration[]
-  credEvents      CredEvent[]
+  credEvents         CredEvent[]
 }
 
 model College {
@@ -47,11 +45,11 @@ model College {
 }
 
 model Event {
-  id                   String    @id @default(cuid())
+  id                   String              @id @default(cuid())
   title                String
   description          String
   type                 EventType
-  college              College   @relation(fields: [collegeId], references: [id])
+  college              College             @relation(fields: [collegeId], references: [id])
   collegeId            String
   startDate            DateTime
   endDate              DateTime?
@@ -60,17 +58,17 @@ model Event {
   teamSize             String?
   tags                 String[]
   link                 String?
-  createdAt            DateTime  @default(now())
+  createdAt            DateTime            @default(now())
   registrations        EventRegistration[]
 }
 
 model EventRegistration {
-  id             String @id @default(cuid())
-  user           User   @relation(fields: [userId], references: [id])
+  id             String   @id @default(cuid())
+  user           User     @relation(fields: [userId], references: [id])
   userId         String
-  event          Event  @relation(fields: [eventId], references: [id])
+  event          Event    @relation(fields: [eventId], references: [id])
   eventId        String
-  lookingForTeam Boolean @default(false)
+  lookingForTeam Boolean  @default(false)
   createdAt      DateTime @default(now())
 
   @@unique([userId, eventId])

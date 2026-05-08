@@ -20,13 +20,21 @@ export async function GET() {
     return NextResponse.json({ message: 'Profile incomplete or no embedding available' }, { status: 400 });
   }
 
+  const role = await prisma.user.findUnique({
+    where: { clerkId: userId },
+    select: { role: true },
+  });
+  if (role?.role !== 'STUDENT') {
+    return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+  }
+
   const matches = await prisma.$queryRaw`
     SELECT id, name, college, domain, skills, "currentCompany", "campusCred", "avatarUrl", "isAvailable",
       ROUND((1 - (embedding <=> ${currentUser.embedding}::vector))::numeric * 100, 1) AS "matchScore"
     FROM "User"
     WHERE role = 'ALUMNI' AND "isAvailable" = true AND embedding IS NOT NULL AND id != ${currentUser.id}
     ORDER BY embedding <=> ${currentUser.embedding}::vector
-    LIMIT 5
+    LIMIT 10
   `;
 
   return NextResponse.json(matches);

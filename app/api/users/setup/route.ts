@@ -85,6 +85,20 @@ export async function POST(req: Request) {
     const mentorCompany = normalizedRole === 'ALUMNI' ? currentCompany || null : null;
     const availableForMentorship = normalizedRole === 'ALUMNI' ? Boolean(isAvailable) : true;
     const parsedGraduationYear = Number.isFinite(Number(graduationYear)) ? Number(graduationYear) : null;
+    const currentYear = new Date().getFullYear();
+
+    if (normalizedRole !== 'COLLEGE_ADMIN') {
+      if (!parsedGraduationYear) {
+        return NextResponse.json({ message: 'Graduation year is required' }, { status: 400 });
+      }
+      if (normalizedRole === 'ALUMNI' && parsedGraduationYear > currentYear) {
+        return NextResponse.json({ message: 'Alumni graduation year must be this year or earlier' }, { status: 400 });
+      }
+      if (normalizedRole === 'STUDENT' && parsedGraduationYear <= currentYear) {
+        return NextResponse.json({ message: 'Student graduation year must be after the current year' }, { status: 400 });
+      }
+    }
+
     const profileText = `Name: ${name}. Role: ${normalizedRole}. College: ${college}. Domain: ${domain}. Skills: ${skills.join(', ')}.${bio ? ` Bio: ${bio}.` : ''}${mentorCompany ? ` Currently at: ${mentorCompany}.` : ''} Graduation year: ${parsedGraduationYear ?? 'N/A'}.`;
     const embedding = await createProfileEmbedding(profileText);
     const embeddingVector = JSON.stringify(embedding);
@@ -115,7 +129,7 @@ export async function POST(req: Request) {
         embedding = EXCLUDED.embedding
       RETURNING id, "clerkId", email, name, role, college, branch, "graduationYear",
         bio, skills, domain, "currentCompany", "avatarUrl", "campusCred",
-        "isAvailable", "createdAt"
+        "isAvailable"
     `;
 
     await syncCollegeAdmin(college, userId, normalizedRole);

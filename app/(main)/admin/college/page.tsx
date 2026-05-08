@@ -7,6 +7,12 @@ export default async function CollegeAdminPage() {
   const { userId } = auth();
   if (!userId) redirect('/sign-in');
 
+  const currentUser = await prisma.user.findUnique({
+    where: { clerkId: userId },
+    select: { role: true },
+  });
+  if (!currentUser) redirect('/onboarding');
+
   const college = await prisma.college.findUnique({
     where: { adminClerkId: userId },
     include: {
@@ -14,7 +20,7 @@ export default async function CollegeAdminPage() {
     },
   });
 
-  if (!college) {
+  if (currentUser.role !== 'COLLEGE_ADMIN' || !college) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-700">
         You do not have college admin access.

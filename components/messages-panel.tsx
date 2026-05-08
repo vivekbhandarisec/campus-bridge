@@ -25,9 +25,10 @@ interface MessageItem {
 
 interface MessagesPanelProps {
   peers: Peer[];
+  currentUserId: string;
 }
 
-export function MessagesPanel({ peers }: MessagesPanelProps) {
+export function MessagesPanel({ peers, currentUserId }: MessagesPanelProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const selectedUser = searchParams.get('user') || peers?.[0]?.userId || '';
@@ -52,10 +53,13 @@ export function MessagesPanel({ peers }: MessagesPanelProps) {
   useEffect(() => {
     if (!selectedUser) return;
     const channel = supabase
-      .channel(`messages:${selectedUser}`)
+      .channel(`user_${currentUserId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Message' }, (payload) => {
         const newMessage = payload.new as MessageItem;
-        if (newMessage.senderId === selectedUser || newMessage.receiverId === selectedUser) {
+        if (
+          (newMessage.senderId === currentUserId && newMessage.receiverId === selectedUser) ||
+          (newMessage.senderId === selectedUser && newMessage.receiverId === currentUserId)
+        ) {
           setMessages((prev) => [...prev, newMessage]);
         }
       })
@@ -64,7 +68,7 @@ export function MessagesPanel({ peers }: MessagesPanelProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedUser]);
+  }, [currentUserId, selectedUser]);
 
   const sendMessage = async () => {
     if (!text.trim() || !selectedUser) return;
@@ -79,7 +83,8 @@ export function MessagesPanel({ peers }: MessagesPanelProps) {
       return;
     }
     setText('');
-    setMessages((prev) => [...prev, { id: Date.now().toString(), senderId: 'me', receiverId: selectedUser, content: text, createdAt: new Date().toISOString() }]);
+    const message = await response.json();
+    setMessages((prev) => [...prev, message]);
   };
 
   return (
@@ -113,7 +118,7 @@ export function MessagesPanel({ peers }: MessagesPanelProps) {
             <p className="text-sm text-slate-500">Loading conversation...</p>
           ) : messages.length > 0 ? (
             messages.map((message) => (
-              <div key={message.id} className={`max-w-[80%] rounded-2xl p-4 ${message.senderId === 'me' ? 'ml-auto bg-sky-500 text-white' : 'border border-slate-200 bg-white text-slate-700'}`}>
+              <div key={message.id} className={`max-w-[80%] rounded-2xl p-4 ${message.senderId === currentUserId ? 'ml-auto bg-sky-500 text-white' : 'border border-slate-200 bg-white text-slate-700'}`}>
                 <p className="text-sm leading-7">{message.content}</p>
                 <p className="mt-2 text-xs text-slate-500">{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
               </div>

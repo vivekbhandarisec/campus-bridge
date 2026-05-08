@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MatchCard } from './match-card';
-import { Button } from './ui/button';
+import { Skeleton } from './Skeleton';
 
 interface MatchUser {
   id: string;
@@ -57,7 +57,7 @@ export function MatchPanel() {
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((key) => (
-            <div key={key} className="h-44 animate-pulse rounded-2xl bg-slate-100" />
+            <Skeleton key={key} className="h-44" />
           ))}
         </div>
       ) : error ? (

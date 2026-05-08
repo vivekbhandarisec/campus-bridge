@@ -37,5 +37,5 @@ export default async function MessagesPage() {
 
   const peers = Array.from(peersMap.entries()).map(([userId, data]) => ({ userId, ...data }));
 
-  return <MessagesPanel peers={peers} />;
+  return <MessagesPanel peers={peers} currentUserId={currentUser.id} />;
 }

@@ -14,7 +14,7 @@ async function getData(userId: string) {
     prisma.post.findMany({
       orderBy: { createdAt: 'desc' },
       take: 20,
-      include: { author: true },
+      include: { author: { select: { name: true, college: true, avatarUrl: true } } },
     }),
     prisma.event.findMany({
       where: { startDate: { gte: new Date() } },
@@ -24,8 +24,13 @@ async function getData(userId: string) {
     }),
     prisma.user.findMany({
       where: { role: 'ALUMNI', isAvailable: true },
-      orderBy: { campusCred: 'desc' },
+      orderBy: [{ campusCred: 'desc' }, { name: 'asc' }],
       take: 3,
+      select: {
+        id: true,
+        name: true,
+        currentCompany: true,
+      },
     }),
   ]);
 

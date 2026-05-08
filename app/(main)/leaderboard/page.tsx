@@ -12,8 +12,17 @@ export default async function LeaderboardPage() {
 
   const entries = await prisma.user.findMany({
     where: { role: 'ALUMNI' },
-    orderBy: { campusCred: 'desc' },
-    take: 20,
+    orderBy: [{ campusCred: 'desc' }, { name: 'asc' }],
+    take: 50,
+    select: {
+      id: true,
+      name: true,
+      college: true,
+      currentCompany: true,
+      campusCred: true,
+      domain: true,
+      avatarUrl: true,
+    },
   });
 
   return <LeaderboardTable entries={entries} />;
