@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id              String   @id @default(cuid())
+  clerkId         String   @unique
+  email           String   @unique
+  name            String
+  role            Role     @default(STUDENT)
+  college         String
+  branch          String?
+  graduationYear  Int?
+  bio             String?
+  skills          String[]
+  domain          String? 
+  currentCompany  String?
+  linkedinUrl     String?
+  githubUrl       String?
+  avatarUrl       String?
+  campusCred      Int      @default(0)
+  isAvailable     Boolean  @default(true)
+  embedding       Unsupported("vector")?
+  createdAt       DateTime @default(now())
+
+  posts           Post[]
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+  eventRegistrations EventRegistration[]
+  credEvents      CredEvent[]
+}
+
+model College {
+  id           String  @id @default(cuid())
+  name         String  @unique
+  city         String
+  state        String
+  verified     Boolean @default(false)
+  adminClerkId String? @unique
+  events       Event[]
+}
+
+model Event {
+  id                   String    @id @default(cuid())
+  title                String
+  description          String
+  type                 EventType
+  college              College   @relation(fields: [collegeId], references: [id])
+  collegeId            String
+  startDate            DateTime
+  endDate              DateTime?
+  registrationDeadline DateTime?
+  prize                String?
+  teamSize             String?
+  tags                 String[]
+  link                 String?
+  createdAt            DateTime  @default(now())
+  registrations        EventRegistration[]
+}
+
+model EventRegistration {
+  id             String @id @default(cuid())
+  user           User   @relation(fields: [userId], references: [id])
+  userId         String
+  event          Event  @relation(fields: [eventId], references: [id])
+  eventId        String
+  lookingForTeam Boolean @default(false)
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, eventId])
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  content   String
+  type      PostType @default(GENERAL)
+  likes     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+  senderId   String
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  receiverId String
+  content    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model CredEvent {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  points    Int
+  reason    String
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  STUDENT
+  ALUMNI
+  COLLEGE_ADMIN
+}
+
+enum EventType {
+  HACKATHON
+  CTF
+  INTERNSHIP
+  WORKSHOP
+}
+
+enum PostType {
+  GENERAL
+  ADVICE
+  OPPORTUNITY
+}
