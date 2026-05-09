@@ -4,7 +4,7 @@ import { Navbar } from '@/components/navbar';
 import { useUser } from '@/contexts/UserContext';
 
 export function MainLayoutClient({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useUser();
+  const { user } = useUser();
 
   return (
     <>

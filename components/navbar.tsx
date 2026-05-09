@@ -39,6 +39,7 @@ export function Navbar({ role }: { role: Role | null }) {
               <Link
                 key={link.href}
                 href={link.href}
+                prefetch={false}
                 className={cn(
                   'inline-flex items-center gap-2 rounded-[9px] px-3 py-2 text-slate-600 transition-all duration-300 hover:bg-white/80 hover:shadow-soft',
                   active && 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-premium',
@@ -54,12 +55,12 @@ export function Navbar({ role }: { role: Role | null }) {
         <div className="flex items-center gap-3">
           <SignedIn>
             {role === 'STUDENT' && (
-              <Link href="/match" className="hidden items-center gap-2 rounded-[10px] border border-primary-500/15 bg-gradient-to-r from-primary-50 to-primary-100 px-3 py-2 text-sm font-semibold text-primary-600 transition-all duration-300 hover:shadow-premium md:inline-flex">
+              <Link href="/match" prefetch={false} className="hidden items-center gap-2 rounded-[10px] border border-primary-500/15 bg-gradient-to-r from-primary-50 to-primary-100 px-3 py-2 text-sm font-semibold text-primary-600 transition-all duration-300 hover:shadow-premium md:inline-flex">
                 <Sparkles className="h-4 w-4" />
                 AI Match
               </Link>
             )}
-            <Link href="/settings/profile" className="hidden h-10 w-10 place-items-center rounded-[10px] border border-slate-200/50 bg-white/80 backdrop-blur-sm text-slate-500 transition-all duration-300 hover:text-primary-500 hover:shadow-soft md:grid" aria-label="Settings">
+            <Link href="/settings/profile" prefetch={false} className="hidden h-10 w-10 place-items-center rounded-[10px] border border-slate-200/50 bg-white/80 backdrop-blur-sm text-slate-500 transition-all duration-300 hover:text-primary-500 hover:shadow-soft md:grid" aria-label="Settings">
               <Settings className="h-4 w-4" />
             </Link>
             <UserButton

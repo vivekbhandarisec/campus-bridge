@@ -1,6 +1,4 @@
-import { Navbar } from '@/components/navbar';
 import { PageShell } from '@/components/layout/PageShell';
-import { OptimizedRouteWarmup } from '@/components/optimized-route-warmup';
 import { MainLayoutClient } from './MainLayoutClient';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
