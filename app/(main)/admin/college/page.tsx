@@ -23,7 +23,7 @@ export default async function CollegeAdminPage() {
   if (currentUser.role !== 'COLLEGE_ADMIN' || !college) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-700">
-        You do not have college admin access.
+        You do not have college organizer access.
       </div>
     );
   }
@@ -33,8 +33,8 @@ export default async function CollegeAdminPage() {
       <div className="rounded-2xl border border-slate-200 bg-navy p-8 text-white shadow-soft">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">College admin</p>
-            <h1 className="page-title text-white">{college.name} dashboard</h1>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">College organizer</p>
+            <h1 className="page-title text-white">{college.name} workspace</h1>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white">
             Total registrations: {college.events.reduce((sum, event) => sum + event.registrations.length, 0)}

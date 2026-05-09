@@ -33,3 +33,12 @@ export function formatDate(dateString: string | Date) {
     year: 'numeric',
   });
 }
+
+export function normalizeUsername(username: string) {
+  return username
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9_]/g, '')
+    .slice(0, 20);
+}

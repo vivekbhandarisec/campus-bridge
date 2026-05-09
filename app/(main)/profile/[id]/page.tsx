@@ -8,7 +8,32 @@ import { formatDate, campusCredBadge } from '@/lib/utils';
 export default async function ProfilePage({ params }: { params: { id: string } }) {
   const user = await prisma.user.findUnique({
     where: { id: params.id },
-    include: { posts: { orderBy: { createdAt: 'desc' }, take: 5 } },
+    select: {
+      id: true,
+      username: true,
+      name: true,
+      role: true,
+      college: true,
+      branch: true,
+      graduationYear: true,
+      bio: true,
+      domain: true,
+      currentCompany: true,
+      linkedinUrl: true,
+      githubUrl: true,
+      avatarUrl: true,
+      campusCred: true,
+      skills: true,
+      posts: {
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        select: {
+          id: true,
+          type: true,
+          createdAt: true,
+        },
+      },
+    },
   });
 
   if (!user) {
@@ -27,6 +52,7 @@ export default async function ProfilePage({ params }: { params: { id: string } }
         <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-soft">
           <Avatar src={user.avatarUrl} name={user.name} className="mx-auto mb-4" />
           <h1 className="page-title">{user.name}</h1>
+          {user.username ? <p className="mt-2 text-sm text-slate-500">@{user.username}</p> : null}
           <p className="mt-2 text-sm text-slate-500">{user.college}</p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             {user.skills.map((skill) => (
@@ -88,7 +114,7 @@ export default async function ProfilePage({ params }: { params: { id: string } }
             {user.posts.length > 0 ? (
               user.posts.map((post) => (
                 <article key={post.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                  <p className="text-sm text-slate-700">{post.content}</p>
+                  <p className="text-sm text-slate-700">{post.type.toLowerCase()} post</p>
                   <p className="mt-3 text-xs text-slate-500">{formatDate(post.createdAt)}</p>
                 </article>
               ))

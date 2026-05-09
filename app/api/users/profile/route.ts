@@ -71,9 +71,16 @@ export async function PUT(req: Request) {
     const body = await req.json();
     const { role, college, branch, graduationYear, domain, skills, bio, currentCompany, isAvailable } = body;
     const normalizedRole = ['STUDENT', 'ALUMNI', 'COLLEGE_ADMIN'].includes(role) ? role : '';
+    const isCollegeAdmin = normalizedRole === 'COLLEGE_ADMIN';
+    const normalizedDomain = isCollegeAdmin ? null : domain;
+    const normalizedSkills = isCollegeAdmin ? [] : skills;
 
-    if (!normalizedRole || !college || !domain || !Array.isArray(skills) || skills.length === 0) {
-      return NextResponse.json({ message: 'Role, college, domain, and skills are required' }, { status: 400 });
+    if (!normalizedRole || !college) {
+      return NextResponse.json({ message: 'Role and college are required' }, { status: 400 });
+    }
+
+    if (!isCollegeAdmin && (!normalizedDomain || !Array.isArray(normalizedSkills) || normalizedSkills.length === 0)) {
+      return NextResponse.json({ message: 'Domain and skills are required for student and alumni profiles' }, { status: 400 });
     }
 
     const existingUser = await prisma.user.findUnique({ where: { clerkId: userId } });
@@ -86,7 +93,7 @@ export async function PUT(req: Request) {
     const parsedGraduationYear = Number.isFinite(Number(graduationYear)) ? Number(graduationYear) : null;
     const currentYear = new Date().getFullYear();
 
-    if (normalizedRole !== 'COLLEGE_ADMIN') {
+    if (!isCollegeAdmin) {
       if (!parsedGraduationYear) {
         return NextResponse.json({ message: 'Graduation year is required' }, { status: 400 });
       }
@@ -98,7 +105,9 @@ export async function PUT(req: Request) {
       }
     }
 
-    const profileText = `Name: ${existingUser.name}. Role: ${normalizedRole}. College: ${college}. Domain: ${domain}. Skills: ${skills.join(', ')}.${bio ? ` Bio: ${bio}.` : ''}${mentorCompany ? ` Currently at: ${mentorCompany}.` : ''} Graduation year: ${parsedGraduationYear ?? 'N/A'}.`;
+    const profileText = isCollegeAdmin
+      ? `Name: ${existingUser.name}. Role: ${normalizedRole}. College: ${college}.${bio ? ` Organizer note: ${bio}.` : ''}`
+      : `Name: ${existingUser.name}. Role: ${normalizedRole}. College: ${college}. Domain: ${normalizedDomain}. Skills: ${normalizedSkills.join(', ')}.${bio ? ` Bio: ${bio}.` : ''}${mentorCompany ? ` Currently at: ${mentorCompany}.` : ''} Graduation year: ${parsedGraduationYear ?? 'N/A'}.`;
     const embeddingVector = JSON.stringify(await createProfileEmbedding(profileText));
 
     const users = await prisma.$queryRaw`
@@ -108,8 +117,8 @@ export async function PUT(req: Request) {
         college = ${college},
         branch = ${branch || null},
         "graduationYear" = ${parsedGraduationYear},
-        domain = ${domain},
-        skills = ${skills},
+        domain = ${normalizedDomain},
+        skills = ${normalizedSkills},
         bio = ${bio || null},
         "currentCompany" = ${mentorCompany},
         "isAvailable" = ${availableForMentorship},
@@ -122,7 +131,8 @@ export async function PUT(req: Request) {
 
     await syncCollegeAdmin(college, userId, normalizedRole);
 
-    return NextResponse.json(Array.isArray(users) ? users[0] : users);
+    const user = Array.isArray(users) ? users[0] : users;
+    return NextResponse.json({ ...user, profileComplete: true });
   } catch (error) {
     console.error('Profile update failed:', error);
     return NextResponse.json({ message: 'Profile update failed. Check server logs for details.' }, { status: 500 });

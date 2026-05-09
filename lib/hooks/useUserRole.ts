@@ -3,31 +3,44 @@
 import type { Role } from '@prisma/client';
 import { useEffect, useState } from 'react';
 
+let cachedRole: Role | null | undefined;
+let roleRequest: Promise<Role | null> | null = null;
+
+async function fetchRole(): Promise<Role | null> {
+  if (cachedRole !== undefined) return cachedRole;
+  if (roleRequest) return roleRequest;
+
+  roleRequest = fetch('/api/users/me')
+    .then((response) => (response.ok ? response.json() : null))
+    .then((user) => {
+      cachedRole = user?.role ?? null;
+      return cachedRole;
+    })
+    .catch(() => {
+      cachedRole = null;
+      return null;
+    })
+    .finally(() => {
+      roleRequest = null;
+    }) as Promise<Role | null>;
+
+  return roleRequest;
+}
+
 export function useUserRole() {
-  const [role, setRole] = useState<Role | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<Role | null>(cachedRole ?? null);
+  const [loading, setLoading] = useState(cachedRole === undefined);
 
   useEffect(() => {
     let active = true;
 
-    async function loadRole() {
-      try {
-        const response = await fetch('/api/users/me', { cache: 'no-store' });
-        if (!response.ok) {
-          if (active) setRole(null);
-          return;
-        }
-
-        const user = await response.json();
-        if (active) setRole(user.role ?? null);
-      } catch {
-        if (active) setRole(null);
-      } finally {
+    fetchRole().then((nextRole) => {
+      if (active) {
+        setRole(nextRole);
         if (active) setLoading(false);
       }
-    }
+    });
 
-    loadRole();
     return () => {
       active = false;
     };

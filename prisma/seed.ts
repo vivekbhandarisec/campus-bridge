@@ -39,6 +39,7 @@ async function main() {
     {
       clerkId: 'clerk-alumni-google',
       email: 'sai@google.com',
+      username: 'sai_gupta',
       name: 'Sai Gupta',
       role: 'ALUMNI',
       college: 'IIT Delhi',
@@ -57,6 +58,7 @@ async function main() {
     {
       clerkId: 'clerk-alumni-flipkart',
       email: 'nisha@flipkart.com',
+      username: 'nisha_patel',
       name: 'Nisha Patel',
       role: 'ALUMNI',
       college: 'IIT Delhi',
@@ -75,6 +77,7 @@ async function main() {
     {
       clerkId: 'clerk-alumni-razorpay',
       email: 'aman@razorpay.com',
+      username: 'aman_sharma',
       name: 'Aman Sharma',
       role: 'ALUMNI',
       college: 'VIT Vellore',
@@ -93,6 +96,7 @@ async function main() {
     {
       clerkId: 'clerk-alumni-swiggy',
       email: 'priya@swiggy.com',
+      username: 'priya_menon',
       name: 'Priya Menon',
       role: 'ALUMNI',
       college: 'IIT Delhi',
@@ -111,6 +115,7 @@ async function main() {
     {
       clerkId: 'clerk-alumni-cred',
       email: 'tarun@cred.com',
+      username: 'tarun_kumar',
       name: 'Tarun Kumar',
       role: 'ALUMNI',
       college: 'VIT Vellore',
@@ -258,7 +263,7 @@ async function main() {
       create: {
         id: `${author.id}-${post.type}`,
         authorId: author.id,
-        content: post.content,
+        body: post.content,
         type: post.type as any,
       },
     });

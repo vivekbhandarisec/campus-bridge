@@ -7,7 +7,10 @@ export default async function MessagesPage() {
   const { userId } = auth();
   if (!userId) redirect('/sign-in');
 
-  const currentUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+  const currentUser = await prisma.user.findUnique({
+    where: { clerkId: userId },
+    select: { id: true },
+  });
   if (!currentUser) redirect('/onboarding');
 
   const conversations = await prisma.message.findMany({
@@ -15,7 +18,10 @@ export default async function MessagesPage() {
       OR: [{ senderId: currentUser.id }, { receiverId: currentUser.id }],
     },
     orderBy: { createdAt: 'desc' },
-    include: { sender: true, receiver: true },
+    include: {
+      sender: { select: { id: true, name: true, college: true, avatarUrl: true } },
+      receiver: { select: { id: true, name: true, college: true, avatarUrl: true } },
+    },
     take: 20,
   });
 
@@ -37,5 +43,5 @@ export default async function MessagesPage() {
 
   const peers = Array.from(peersMap.entries()).map(([userId, data]) => ({ userId, ...data }));
 
-  return <MessagesPanel peers={peers} currentUserId={currentUser.id} />;
+  return <MessagesPanel peers={peers} currentUserId={currentUser.id} currentClerkId={userId} />;
 }

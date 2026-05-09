@@ -4,7 +4,10 @@ import prisma from '@/lib/prisma';
 import { MatchPanel } from '@/components/match-panel';
 
 async function validateStudent(userId: string) {
-  const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+  const user = await prisma.user.findUnique({
+    where: { clerkId: userId },
+    select: { role: true },
+  });
   return user;
 }
 
@@ -14,7 +17,7 @@ export default async function MatchPage() {
 
   const currentUser = await validateStudent(userId);
   if (!currentUser) redirect('/onboarding');
-  if (currentUser.role !== 'STUDENT') redirect('/feed');
+  if (currentUser.role !== 'STUDENT') redirect('/feed?notice=student-only');
 
   return (
     <div className="space-y-8">

@@ -2,6 +2,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
+import { normalizeUsername } from '@/lib/utils';
 import openai from '@/lib/openai';
 
 async function createProfileEmbedding(profileText: string) {
@@ -70,16 +71,33 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { role, college, branch, graduationYear, domain, skills, bio, currentCompany, isAvailable } = body;
+    const { role, username, college, branch, graduationYear, domain, skills, bio, currentCompany, isAvailable } = body;
     const normalizedRole = ['STUDENT', 'ALUMNI', 'COLLEGE_ADMIN'].includes(role) ? role : '';
+    const normalizedUsername = typeof username === 'string' ? normalizeUsername(username) : '';
+    const isCollegeAdmin = normalizedRole === 'COLLEGE_ADMIN';
+    const normalizedDomain = isCollegeAdmin ? null : domain;
+    const normalizedSkills = isCollegeAdmin ? [] : skills;
 
-    if (!normalizedRole || !college || !domain || !Array.isArray(skills)) {
+    if (!normalizedRole || !normalizedUsername || !college) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
+    }
+
+    if (!isCollegeAdmin && (!normalizedDomain || !Array.isArray(normalizedSkills) || normalizedSkills.length === 0)) {
+      return NextResponse.json({ message: 'Domain and skills are required for student and alumni profiles' }, { status: 400 });
+    }
+
+    if (!/^[a-z][a-z0-9_]{2,19}$/.test(normalizedUsername)) {
+      return NextResponse.json({ message: 'Username must be 3–20 characters, start with a letter, and only include letters, numbers, or underscores.' }, { status: 400 });
     }
 
     const clerkUser = await clerkClient.users.getUser(userId);
     const email = clerkUser.primaryEmailAddress?.emailAddress || clerkUser.emailAddresses?.[0]?.emailAddress || '';
     const name = clerkUser.fullName || 'CampusBridge member';
+
+    const existingUsername = await prisma.user.findUnique({ where: { username: normalizedUsername } });
+    if (existingUsername && existingUsername.clerkId !== userId && existingUsername.email !== email) {
+      return NextResponse.json({ message: 'Username already taken' }, { status: 409 });
+    }
 
     const avatarUrl = 'profileImageUrl' in clerkUser ? (clerkUser as any).profileImageUrl : clerkUser.imageUrl;
     const mentorCompany = normalizedRole === 'ALUMNI' ? currentCompany || null : null;
@@ -87,7 +105,7 @@ export async function POST(req: Request) {
     const parsedGraduationYear = Number.isFinite(Number(graduationYear)) ? Number(graduationYear) : null;
     const currentYear = new Date().getFullYear();
 
-    if (normalizedRole !== 'COLLEGE_ADMIN') {
+    if (!isCollegeAdmin) {
       if (!parsedGraduationYear) {
         return NextResponse.json({ message: 'Graduation year is required' }, { status: 400 });
       }
@@ -99,22 +117,50 @@ export async function POST(req: Request) {
       }
     }
 
-    const profileText = `Name: ${name}. Role: ${normalizedRole}. College: ${college}. Domain: ${domain}. Skills: ${skills.join(', ')}.${bio ? ` Bio: ${bio}.` : ''}${mentorCompany ? ` Currently at: ${mentorCompany}.` : ''} Graduation year: ${parsedGraduationYear ?? 'N/A'}.`;
+    const profileText = isCollegeAdmin
+      ? `Name: ${name}. Role: ${normalizedRole}. College: ${college}.${bio ? ` Organizer note: ${bio}.` : ''}`
+      : `Name: ${name}. Role: ${normalizedRole}. College: ${college}. Domain: ${normalizedDomain}. Skills: ${normalizedSkills.join(', ')}.${bio ? ` Bio: ${bio}.` : ''}${mentorCompany ? ` Currently at: ${mentorCompany}.` : ''} Graduation year: ${parsedGraduationYear ?? 'N/A'}.`;
     const embedding = await createProfileEmbedding(profileText);
     const embeddingVector = JSON.stringify(embedding);
 
-    const users = await prisma.$queryRaw`
+    let users = await prisma.$queryRaw`
+      UPDATE "User"
+      SET
+        "clerkId" = ${userId},
+        email = ${email},
+        username = ${normalizedUsername},
+        name = ${name},
+        role = ${normalizedRole}::"Role",
+        college = ${college},
+        branch = ${branch || null},
+        "graduationYear" = ${parsedGraduationYear},
+        domain = ${normalizedDomain},
+        skills = ${normalizedSkills},
+        bio = ${bio || null},
+        "currentCompany" = ${mentorCompany},
+        "isAvailable" = ${availableForMentorship},
+        "avatarUrl" = ${avatarUrl || null},
+        embedding = ${embeddingVector}::vector
+      WHERE "clerkId" = ${userId} OR email = ${email}
+      RETURNING id, "clerkId", email, username, name, role, college, branch, "graduationYear",
+        bio, skills, domain, "currentCompany", "avatarUrl", "campusCred",
+        "isAvailable"
+    `;
+
+    if (Array.isArray(users) && users.length === 0) {
+      users = await prisma.$queryRaw`
       INSERT INTO "User" (
-        id, "clerkId", email, name, role, college, branch, "graduationYear",
+        id, "clerkId", email, username, name, role, college, branch, "graduationYear",
         domain, skills, bio, "currentCompany", "isAvailable", "avatarUrl", embedding
       )
       VALUES (
-        ${randomUUID()}, ${userId}, ${email}, ${name}, ${normalizedRole}::"Role", ${college}, ${branch || null},
-        ${parsedGraduationYear}, ${domain}, ${skills}, ${bio || null}, ${mentorCompany},
+        ${randomUUID()}, ${userId}, ${email}, ${normalizedUsername}, ${name}, ${normalizedRole}::"Role", ${college}, ${branch || null},
+        ${parsedGraduationYear}, ${normalizedDomain}, ${normalizedSkills}, ${bio || null}, ${mentorCompany},
         ${availableForMentorship}, ${avatarUrl || null}, ${embeddingVector}::vector
       )
       ON CONFLICT ("clerkId") DO UPDATE SET
         email = EXCLUDED.email,
+        username = EXCLUDED.username,
         name = EXCLUDED.name,
         role = EXCLUDED.role,
         college = EXCLUDED.college,
@@ -127,14 +173,16 @@ export async function POST(req: Request) {
         "isAvailable" = EXCLUDED."isAvailable",
         "avatarUrl" = EXCLUDED."avatarUrl",
         embedding = EXCLUDED.embedding
-      RETURNING id, "clerkId", email, name, role, college, branch, "graduationYear",
+      RETURNING id, "clerkId", email, username, name, role, college, branch, "graduationYear",
         bio, skills, domain, "currentCompany", "avatarUrl", "campusCred",
         "isAvailable"
-    `;
+      `;
+    }
 
     await syncCollegeAdmin(college, userId, normalizedRole);
 
-    return NextResponse.json(Array.isArray(users) ? users[0] : users);
+    const user = Array.isArray(users) ? users[0] : users;
+    return NextResponse.json({ ...user, profileComplete: true });
   } catch (error) {
     console.error('User setup failed:', error);
     return NextResponse.json({ message: 'Profile setup failed. Check server logs for details.' }, { status: 500 });

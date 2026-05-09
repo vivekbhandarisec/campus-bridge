@@ -1,35 +1,31 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
 
-const isProtectedRoute = createRouteMatcher([
+const isProtectedPage = createRouteMatcher([
+  '/dashboard(.*)',
   '/feed(.*)',
   '/match(.*)',
   '/events(.*)',
   '/messages(.*)',
   '/leaderboard(.*)',
+  '/orbit(.*)',
+  '/search(.*)',
   '/settings(.*)',
   '/admin(.*)',
   '/profile(.*)',
-  '/api(.*)',
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
-    auth().protect();
+export default clerkMiddleware((auth, req) => {
+  const { userId } = auth();
+
+  if (!userId && isProtectedPage(req)) {
+    return NextResponse.redirect(new URL('/sign-in', req.url));
   }
 });
 
 export const config = {
   matcher: [
-    '/',
-    '/feed/:path*',
-    '/match/:path*',
-    '/events/:path*',
-    '/messages/:path*',
-    '/leaderboard/:path*',
-    '/settings/:path*',
-    '/admin/:path*',
-    '/profile/:path*',
-    '/api/:path*',
-    '/onboarding',
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
   ],
 };

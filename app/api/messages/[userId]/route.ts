@@ -8,12 +8,18 @@ export async function GET(req: Request, { params }: { params: { userId: string }
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const currentUser = await prisma.user.findUnique({ where: { clerkId } });
+  const currentUser = await prisma.user.findUnique({
+    where: { clerkId },
+    select: { id: true },
+  });
   if (!currentUser) {
     return NextResponse.json({ message: 'User not found' }, { status: 404 });
   }
 
-  const other = await prisma.user.findUnique({ where: { id: params.userId } });
+  const other = await prisma.user.findUnique({
+    where: { id: params.userId },
+    select: { id: true },
+  });
   if (!other) {
     return NextResponse.json({ message: 'Target user not found' }, { status: 404 });
   }
@@ -37,12 +43,18 @@ export async function POST(req: Request, { params }: { params: { userId: string 
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const currentUser = await prisma.user.findUnique({ where: { clerkId } });
+  const currentUser = await prisma.user.findUnique({
+    where: { clerkId },
+    select: { id: true },
+  });
   if (!currentUser) {
     return NextResponse.json({ message: 'User not found' }, { status: 404 });
   }
 
-  const other = await prisma.user.findUnique({ where: { id: params.userId } });
+  const other = await prisma.user.findUnique({
+    where: { id: params.userId },
+    select: { id: true },
+  });
   if (!other) {
     return NextResponse.json({ message: 'Target user not found' }, { status: 404 });
   }

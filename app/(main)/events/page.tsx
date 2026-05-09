@@ -12,6 +12,8 @@ async function getEvents(userId: string) {
   return { user, events };
 }
 
+export const revalidate = 60; // Revalidate every 60 seconds
+
 export default async function EventsPage() {
   const { userId } = auth();
   if (!userId) redirect('/sign-in');

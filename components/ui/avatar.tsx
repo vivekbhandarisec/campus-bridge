@@ -1,4 +1,5 @@
 import * as React from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -22,7 +23,16 @@ const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(({ src, name, class
       className={cn('inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-teal-600 text-sm font-semibold text-white', className)}
       {...props}
     >
-      {src ? <img src={src} alt={name} className="h-full w-full rounded-full object-cover" /> : initials}
+      {src ? (
+        <Image
+          src={src}
+          alt={name || 'Profile avatar'}
+          width={96}
+          height={96}
+          unoptimized
+          className="h-full w-full rounded-full object-cover"
+        />
+      ) : initials}
     </div>
   );
 });

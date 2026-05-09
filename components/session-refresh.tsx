@@ -11,13 +11,14 @@ export function SessionRefresh({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isLoaded) return;
 
-    const refresh = () => router.refresh();
+    const refresh = (event: PageTransitionEvent) => {
+      if (event.persisted) router.refresh();
+    };
+
     window.addEventListener('pageshow', refresh);
-    window.addEventListener('focus', refresh);
 
     return () => {
       window.removeEventListener('pageshow', refresh);
-      window.removeEventListener('focus', refresh);
     };
   }, [isLoaded, router]);
 

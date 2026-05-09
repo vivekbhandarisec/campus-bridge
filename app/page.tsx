@@ -7,18 +7,20 @@ import { isProfileComplete } from '@/lib/profile-completion';
 
 async function getSummary() {
   if (!process.env.DATABASE_URL || !prisma) {
-    return { users: 150, events: 8 };
+    return { students: 0, alumni: 0, organizers: 0, events: 0 };
   }
 
   try {
-    const [users, events] = await Promise.all([
-      prisma.user.count(),
+    const [students, alumni, organizers, events] = await Promise.all([
+      prisma.user.count({ where: { role: 'STUDENT' } }),
+      prisma.user.count({ where: { role: 'ALUMNI' } }),
+      prisma.user.count({ where: { role: 'COLLEGE_ADMIN' } }),
       prisma.event.count(),
     ]);
-    return { users, events };
+    return { students, alumni, organizers, events };
   } catch (error) {
-    console.warn('Database query failed, using demo data:', error);
-    return { users: 150, events: 8 };
+    console.warn('Database query failed, using zero summary:', error);
+    return { students: 0, alumni: 0, organizers: 0, events: 0 };
   }
 }
 
@@ -27,12 +29,12 @@ export default async function HomePage() {
   if (userId) {
     const user = await prisma.user.findUnique({
       where: { clerkId: userId },
-      select: { college: true, domain: true, skills: true },
+      select: { role: true, college: true, domain: true, skills: true },
     });
-    redirect(user && isProfileComplete(user) ? '/feed' : '/onboarding');
+    redirect(user && isProfileComplete(user) ? '/dashboard' : '/onboarding');
   }
 
-  const { users, events } = await getSummary();
+  const { students, alumni, organizers, events } = await getSummary();
 
   return (
     <div className="min-h-screen">
@@ -64,24 +66,26 @@ export default async function HomePage() {
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a href="/sign-in" className="inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-sky-500 px-5 text-sm font-semibold text-white shadow-action transition hover:-translate-y-px hover:bg-sky-400">
-                Join as student
+                Join CampusBridge
                 <ArrowRight className="h-4 w-4" />
               </a>
-              <a href="/sign-in" className="inline-flex h-11 items-center justify-center rounded-[10px] border border-teal-600/25 bg-teal-50 px-5 text-sm font-semibold text-teal-600 transition hover:bg-white">
-                Join as alumni
-              </a>
-              <a href="/sign-in" className="inline-flex h-11 items-center justify-center rounded-[10px] border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-sky-500/40 hover:text-sky-500">
-                Register college
-              </a>
             </div>
-            <div className="mt-8 grid max-w-lg grid-cols-2 gap-4">
+            <div className="mt-8 grid max-w-2xl grid-cols-2 gap-4 sm:grid-cols-4">
               <div className="app-card p-4">
-                <p className="font-mono text-2xl font-medium text-reward-500">{users}+</p>
-                <p className="mt-1 text-sm text-slate-600">students and alumni</p>
+                <p className="font-mono text-2xl font-medium text-reward-500">{students}</p>
+                <p className="mt-1 text-sm text-slate-600">students</p>
               </div>
               <div className="app-card p-4">
-                <p className="font-mono text-2xl font-medium text-reward-500">{events}+</p>
-                <p className="mt-1 text-sm text-slate-600">active opportunities</p>
+                <p className="font-mono text-2xl font-medium text-reward-500">{alumni}</p>
+                <p className="mt-1 text-sm text-slate-600">alumni</p>
+              </div>
+              <div className="app-card p-4">
+                <p className="font-mono text-2xl font-medium text-reward-500">{organizers}</p>
+                <p className="mt-1 text-sm text-slate-600">organizers</p>
+              </div>
+              <div className="app-card p-4">
+                <p className="font-mono text-2xl font-medium text-reward-500">{events}</p>
+                <p className="mt-1 text-sm text-slate-600">opportunities</p>
               </div>
             </div>
           </div>
@@ -150,7 +154,7 @@ export default async function HomePage() {
           ].map((item) => {
             const Icon = item.icon;
             return (
-              <article key={item.label} className="app-card p-6">
+              <article key={item.label} className="app-card p-6 opacity-80">
                 <Icon className="h-5 w-5 text-sky-500" />
                 <p className="section-label mt-5">{item.label}</p>
                 <h2 className="section-title mt-2">{item.title}</h2>

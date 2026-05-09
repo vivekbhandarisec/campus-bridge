@@ -9,10 +9,10 @@ export default async function OnboardingPage() {
   if (userId) {
     const user = await prisma.user.findUnique({
       where: { clerkId: userId },
-      select: { college: true, domain: true, skills: true },
+      select: { role: true, college: true, domain: true, skills: true },
     });
 
-    if (user && isProfileComplete(user)) redirect('/feed');
+    if (user && isProfileComplete(user)) redirect('/dashboard');
   }
 
   return <OnboardingForm />;

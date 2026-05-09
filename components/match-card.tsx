@@ -2,7 +2,6 @@ import type { CSSProperties } from 'react';
 import { MessageCircle, Sparkles } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Avatar } from './ui/avatar';
-import { badgeVariant, formatDate } from '@/lib/utils';
 
 interface MatchCardProps {
   user: {
@@ -15,6 +14,7 @@ interface MatchCardProps {
     campusCred: number;
     avatarUrl: string | null;
     matchScore: number;
+    isAvailable?: boolean;
   };
   onMessage: (id: string) => void;
 }
@@ -28,7 +28,10 @@ export function MatchCard({ user, onMessage }: MatchCardProps) {
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[17px] font-semibold text-navy">{user.name}</p>
-            <span className={badgeVariant('ALUMNI')}>ALUMNI</span>
+            <Badge className="border-sky-500/20 bg-sky-50 text-sky-600">Alumni mentor</Badge>
+            <Badge className={user.isAvailable === false ? 'border-amber-500/20 bg-amber-50 text-amber-600' : 'border-emerald-500/20 bg-emerald-50 text-emerald-600'}>
+              {user.isAvailable === false ? 'Limited' : 'Available'}
+            </Badge>
           </div>
           <p className="text-sm text-slate-500">{user.currentCompany || 'Experienced mentor'}</p>
         </div>

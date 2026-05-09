@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { isProfileComplete } from '@/lib/profile-completion';
 
 export async function GET() {
   const { userId } = auth();
@@ -35,5 +36,5 @@ export async function GET() {
     return NextResponse.json({ message: 'Profile not found' }, { status: 404 });
   }
 
-  return NextResponse.json(user);
+  return NextResponse.json({ ...user, profileComplete: isProfileComplete(user) });
 }

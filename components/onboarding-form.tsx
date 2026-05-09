@@ -27,6 +27,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [role, setRole] = useState('STUDENT');
+  const [username, setUsername] = useState('');
   const [college, setCollege] = useState('');
   const [branch, setBranch] = useState('');
   const [graduationYear, setGraduationYear] = useState('');
@@ -54,6 +55,7 @@ export default function OnboardingPage() {
       const data = JSON.parse(saved);
       setStep(data.step ?? 1);
       setRole(data.role ?? 'STUDENT');
+      setUsername(data.username ?? '');
       setCollege(data.college ?? '');
       setBranch(data.branch ?? '');
       setGraduationYear(data.graduationYear ?? '');
@@ -71,28 +73,35 @@ export default function OnboardingPage() {
     if (!storageKey) return;
     window.localStorage.setItem(
       storageKey,
-      JSON.stringify({ step, role, college, branch, graduationYear, domain, skills, bio, currentCompany, isAvailable }),
+      JSON.stringify({ step, role, username, college, branch, graduationYear, domain, skills, bio, currentCompany, isAvailable }),
     );
-  }, [bio, branch, college, currentCompany, domain, graduationYear, isAvailable, role, skills, step, storageKey]);
+  }, [bio, branch, college, currentCompany, domain, graduationYear, isAvailable, role, skills, step, storageKey, username]);
 
   const nextStep = () => setStep((current) => Math.min(totalSteps, current + 1));
   const prevStep = () => setStep((current) => Math.max(1, current - 1));
-  const totalSteps = role === 'ALUMNI' ? 3 : 2;
+  const totalSteps = role === 'COLLEGE_ADMIN' ? 2 : role === 'ALUMNI' ? 3 : 2;
   const isFinalStep = step === totalSteps;
+  const currentYear = new Date().getFullYear();
+  const graduationYears = role === 'ALUMNI'
+    ? Array.from({ length: 45 }, (_, index) => currentYear - index)
+    : Array.from({ length: 16 }, (_, index) => currentYear + 1 + index);
 
   const validateProfile = () => {
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername) return 'Pick a username.';
+    if (!/^[a-z][a-z0-9_]{2,19}$/i.test(trimmedUsername)) {
+      return 'Username must be 3–20 characters, start with a letter, and only include letters, numbers, or underscores.';
+    }
     if (!college) return 'Choose your college.';
+    if (role === 'COLLEGE_ADMIN') return '';
     if (!domain) return 'Choose your focus area.';
     if (skills.length === 0) return 'Select at least one skill.';
-    if (role !== 'COLLEGE_ADMIN' && !branch.trim()) return 'Enter your branch.';
+    if (!branch.trim()) return 'Enter your branch.';
     if (role === 'ALUMNI' && !currentCompany.trim()) return 'Enter your current company.';
-    if (role !== 'COLLEGE_ADMIN') {
-      const year = Number(graduationYear);
-      const currentYear = new Date().getFullYear();
-      if (!Number.isFinite(year)) return 'Choose your graduation year.';
-      if (role === 'ALUMNI' && year > currentYear) return 'Alumni graduation year must be this year or earlier.';
-      if (role === 'STUDENT' && year <= currentYear) return 'Student graduation year must be after the current year.';
-    }
+    const year = Number(graduationYear);
+    if (!Number.isFinite(year)) return 'Choose your graduation year.';
+    if (role === 'ALUMNI' && year > currentYear) return 'Alumni graduation year must be this year or earlier.';
+    if (role === 'STUDENT' && year <= currentYear) return 'Student graduation year must be after the current year.';
     return '';
   };
 
@@ -113,11 +122,12 @@ export default function OnboardingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           role,
+          username: username.trim().toLowerCase(),
           college,
           branch,
           graduationYear: graduationYear ? Number(graduationYear) : undefined,
-          domain,
-          skills,
+          domain: role === 'COLLEGE_ADMIN' ? null : domain,
+          skills: role === 'COLLEGE_ADMIN' ? [] : skills,
           bio,
           currentCompany: role === 'ALUMNI' ? currentCompany : undefined,
           isAvailable: role === 'ALUMNI' ? isAvailable : true,
@@ -130,7 +140,7 @@ export default function OnboardingPage() {
 
       if (storageKey) window.localStorage.removeItem(storageKey);
       router.refresh();
-      router.push('/feed');
+      router.push('/dashboard');
     } catch (error) {
       setError((error as Error).message);
     } finally {
@@ -144,7 +154,7 @@ export default function OnboardingPage() {
         <div className="mb-8">
           <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-500">Onboarding</p>
           <h1 className="page-title mt-4">Complete your CampusBridge profile</h1>
-          <p className="mt-2 text-sm text-slate-500">This information powers AI matching and event recommendations for your college network.</p>
+          <p className="mt-2 text-sm text-slate-500">Set up the right workspace for your role in the college network.</p>
         </div>
 
         <SignedOut>
@@ -183,9 +193,26 @@ export default function OnboardingPage() {
                       ))}
                     </div>
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Input value={user?.fullName || ''} disabled placeholder="Name" />
-                    <Input value={userEmail} disabled placeholder="Email" />
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-sm text-slate-700">{role === 'STUDENT' ? 'Build your student profile to find mentors, join campus events, and climb the CampusCred leaderboard.' : role === 'ALUMNI' ? 'Set up your alumni profile to mentor students, share opportunities, and showcase your career journey.' : 'Claim your college organizer workspace to publish hackathons, programs, and campus opportunities for your institution.'}</p>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-2 block text-[13px] font-semibold text-slate-700">Choose your username</label>
+                      <Input
+                        value={username}
+                        onChange={(event) => setUsername(event.target.value)}
+                        placeholder="e.g. sam_goyal"
+                        required
+                      />
+                      <p className="mt-2 text-xs text-slate-500">
+                        This will be your public handle for search and profile discovery.
+                      </p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Input value={user?.fullName || ''} disabled placeholder="Name" />
+                      <Input value={userEmail} disabled placeholder="Email" />
+                    </div>
                   </div>
                 </div>
               )}
@@ -211,40 +238,41 @@ export default function OnboardingPage() {
                         <label className="mb-2 block text-[13px] font-semibold text-slate-700">Graduation year</label>
                         <Select value={graduationYear} onChange={(event) => setGraduationYear(event.target.value)}>
                           <option value="">Choose year</option>
-                          {Array.from({ length: 8 }, (_, index) => {
-                            const year = new Date().getFullYear() - 4 + index;
-                            return <option key={year} value={year}>{year}</option>;
-                          })}
+                          {graduationYears.map((year) => (
+                            <option key={year} value={year}>{year}</option>
+                          ))}
                         </Select>
                       </div>
                     </div>
                   )}
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="mb-2 block text-[13px] font-semibold text-slate-700">Domain</label>
-                      <Select value={domain} onChange={(event) => setDomain(event.target.value)} required>
-                        <option value="">Choose your focus area</option>
-                        {domains.map((item) => (
-                          <option key={item} value={item}>{item}</option>
-                        ))}
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="mb-2 block text-[13px] font-semibold text-slate-700">Skills</label>
-                      <div className="flex flex-wrap gap-2">
-                        {skillsOptions.map((skill) => (
-                          <button
-                            key={skill}
-                            type="button"
-                            onClick={() => toggleSkill(skill)}
-                            className={`rounded-full border px-3 py-2 text-[12.5px] font-semibold transition ${skills.includes(skill) ? 'border-sky-500 bg-sky-50 text-sky-500' : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-white'}`}
-                          >
-                            {skill}
-                          </button>
-                        ))}
+                  {role !== 'COLLEGE_ADMIN' && (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-[13px] font-semibold text-slate-700">Domain</label>
+                        <Select value={domain} onChange={(event) => setDomain(event.target.value)} required>
+                          <option value="">Choose your focus area</option>
+                          {domains.map((item) => (
+                            <option key={item} value={item}>{item}</option>
+                          ))}
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-[13px] font-semibold text-slate-700">Skills</label>
+                        <div className="flex flex-wrap gap-2">
+                          {skillsOptions.map((skill) => (
+                            <button
+                              key={skill}
+                              type="button"
+                              onClick={() => toggleSkill(skill)}
+                              className={`rounded-full border px-3 py-2 text-[12.5px] font-semibold transition ${skills.includes(skill) ? 'border-sky-500 bg-sky-50 text-sky-500' : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-white'}`}
+                            >
+                              {skill}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 

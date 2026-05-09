@@ -9,7 +9,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const currentUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+  const currentUser = await prisma.user.findUnique({
+    where: { clerkId: userId },
+    select: { id: true },
+  });
   if (!currentUser) {
     return NextResponse.json({ message: 'User not found' }, { status: 404 });
   }

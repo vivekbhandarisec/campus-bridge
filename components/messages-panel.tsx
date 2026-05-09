@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { EmptyState } from './EmptyState';
+import { Skeleton } from './Skeleton';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 
@@ -26,9 +28,10 @@ interface MessageItem {
 interface MessagesPanelProps {
   peers: Peer[];
   currentUserId: string;
+  currentClerkId: string;
 }
 
-export function MessagesPanel({ peers, currentUserId }: MessagesPanelProps) {
+export function MessagesPanel({ peers, currentUserId, currentClerkId }: MessagesPanelProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const selectedUser = searchParams.get('user') || peers?.[0]?.userId || '';
@@ -53,7 +56,7 @@ export function MessagesPanel({ peers, currentUserId }: MessagesPanelProps) {
   useEffect(() => {
     if (!selectedUser) return;
     const channel = supabase
-      .channel(`user_${currentUserId}`)
+      .channel(`user_${currentClerkId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Message' }, (payload) => {
         const newMessage = payload.new as MessageItem;
         if (
@@ -68,7 +71,7 @@ export function MessagesPanel({ peers, currentUserId }: MessagesPanelProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId, selectedUser]);
+  }, [currentClerkId, currentUserId, selectedUser]);
 
   const sendMessage = async () => {
     if (!text.trim() || !selectedUser) return;
@@ -115,7 +118,11 @@ export function MessagesPanel({ peers, currentUserId }: MessagesPanelProps) {
 
         <div className="min-h-[360px] space-y-4 bg-slate-50/70 p-5">
           {loading ? (
-            <p className="text-sm text-slate-500">Loading conversation...</p>
+            <div className="space-y-3">
+              <Skeleton className="h-14 max-w-[70%]" />
+              <Skeleton className="ml-auto h-14 max-w-[70%]" />
+              <Skeleton className="h-14 max-w-[55%]" />
+            </div>
           ) : messages.length > 0 ? (
             messages.map((message) => (
               <div key={message.id} className={`max-w-[80%] rounded-2xl p-4 ${message.senderId === currentUserId ? 'ml-auto bg-sky-500 text-white' : 'border border-slate-200 bg-white text-slate-700'}`}>
@@ -124,7 +131,7 @@ export function MessagesPanel({ peers, currentUserId }: MessagesPanelProps) {
               </div>
             ))
           ) : (
-            <p className="text-sm text-slate-500">No messages yet. Say hello.</p>
+            <EmptyState title="No messages yet" description="Select a peer and send the first message when you are ready." />
           )}
         </div>
 

@@ -1,6 +1,6 @@
 # CampusBridge
 
-CampusBridge is a college networking platform for students, alumni, and college admins. Students complete a skills profile, discover alumni mentors, follow campus events, post updates, and message people in the network.
+CampusBridge is a college networking platform for students, alumni, and college organizers. Students complete a skills profile, discover alumni mentors, follow campus events, post updates, and message people in the network.
 
 ## Tech stack
 

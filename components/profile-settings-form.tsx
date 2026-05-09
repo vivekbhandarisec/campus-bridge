@@ -8,17 +8,6 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { colleges, domains, roles, skillsOptions } from '@/lib/profile-options';
 
-const adminCapabilities = [
-  'Event Operations',
-  'Student Outreach',
-  'Placement Cell',
-  'Hackathons',
-  'Workshops',
-  'Sponsorships',
-  'Registration Management',
-  'Alumni Relations',
-] as const;
-
 const alumniCapabilities = [
   ...skillsOptions,
   'Mentorship',
@@ -73,6 +62,10 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
   const [deleting, setDeleting] = useState(false);
   const isAlumni = role === 'ALUMNI';
   const isAdmin = role === 'COLLEGE_ADMIN';
+  const currentYear = new Date().getFullYear();
+  const graduationYears = isAlumni
+    ? Array.from({ length: 45 }, (_, index) => currentYear - index)
+    : Array.from({ length: 16 }, (_, index) => currentYear + 1 + index);
   const roleMeta = {
     STUDENT: {
       eyebrow: 'Student profile',
@@ -95,14 +88,12 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
       bioPlaceholder: 'Share your experience, what students can ask you about, and how you prefer to mentor.',
     },
     COLLEGE_ADMIN: {
-      eyebrow: 'College admin profile',
+      eyebrow: 'College organizer profile',
       title: 'Edit your college workspace profile',
-      description: 'Configure the admin profile used for event publishing, registrations, and college visibility.',
+      description: 'Configure the organizer profile used for event publishing, registrations, and college visibility.',
       identityTitle: 'Institution identity',
-      focusLabel: 'Primary program area',
-      skillsLabel: 'Admin capabilities',
-      bioLabel: 'College/admin note',
-      bioPlaceholder: 'Describe your college community, event focus, or admin responsibility.',
+      bioLabel: 'College organizer note',
+      bioPlaceholder: 'Describe your college community, event focus, or organizer responsibility.',
     },
   }[role as 'STUDENT' | 'ALUMNI' | 'COLLEGE_ADMIN'] ?? {
     eyebrow: 'Profile',
@@ -116,7 +107,7 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
   };
 
   const skillChoices = Array.from(new Set([
-    ...(isAdmin ? adminCapabilities : isAlumni ? alumniCapabilities : skillsOptions),
+    ...(isAlumni ? alumniCapabilities : skillsOptions),
     ...skills,
   ]));
 
@@ -126,8 +117,8 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
 
   const validate = () => {
     if (!college) return 'Choose your college.';
-    if (!domain) return 'Choose your focus area.';
-    if (skills.length === 0) return 'Select at least one skill.';
+    if (!isAdmin && !domain) return 'Choose your focus area.';
+    if (!isAdmin && skills.length === 0) return 'Select at least one skill.';
     if (!isAdmin && !branch.trim()) return 'Enter your branch.';
     if (isAlumni && !currentCompany.trim()) return 'Enter your current company.';
     return '';
@@ -154,8 +145,8 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
           college,
           branch,
           graduationYear: graduationYear ? Number(graduationYear) : undefined,
-          domain,
-          skills,
+          domain: isAdmin ? null : domain,
+          skills: isAdmin ? [] : skills,
           bio,
           currentCompany: isAlumni ? currentCompany : undefined,
           isAvailable: isAlumni ? isAvailable : true,
@@ -233,11 +224,11 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
           <div>
             <h2 className="section-title">{roleMeta.identityTitle}</h2>
             <p className="mt-1 text-sm text-slate-500">
-              {isAdmin ? 'Used for college event ownership and admin dashboard context.' : isAlumni ? 'Used by students to understand your background and mentoring fit.' : 'Used by alumni and event boards to understand your academic context.'}
+              {isAdmin ? 'Used for college event ownership and organizer workspace context.' : isAlumni ? 'Used by students to understand your background and mentoring fit.' : 'Used by alumni and event boards to understand your academic context.'}
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className={`grid gap-4 ${isAdmin ? '' : 'sm:grid-cols-2'}`}>
             <div>
               <label className="mb-2 block text-[13px] font-semibold text-slate-700">College</label>
               <Select value={college} onChange={(event) => setCollege(event.target.value)}>
@@ -247,15 +238,17 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
                 ))}
               </Select>
             </div>
-            <div>
-              <label className="mb-2 block text-[13px] font-semibold text-slate-700">{roleMeta.focusLabel}</label>
-              <Select value={domain} onChange={(event) => setDomain(event.target.value)}>
-                <option value="">Choose {isAlumni ? 'mentorship domain' : isAdmin ? 'program area' : 'focus area'}</option>
-                {domains.map((item) => (
-                  <option key={item} value={item}>{item}</option>
-                ))}
-              </Select>
-            </div>
+            {!isAdmin ? (
+              <div>
+                <label className="mb-2 block text-[13px] font-semibold text-slate-700">{roleMeta.focusLabel}</label>
+                <Select value={domain} onChange={(event) => setDomain(event.target.value)}>
+                  <option value="">Choose {isAlumni ? 'mentorship domain' : 'focus area'}</option>
+                  {domains.map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </Select>
+              </div>
+            ) : null}
           </div>
 
           {!isAdmin ? (
@@ -268,10 +261,9 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
                 <label className="mb-2 block text-[13px] font-semibold text-slate-700">{isAlumni ? 'Graduation year' : 'Expected graduation year'}</label>
                 <Select value={graduationYear} onChange={(event) => setGraduationYear(event.target.value)}>
                   <option value="">Choose year</option>
-                  {Array.from({ length: 12 }, (_, index) => {
-                    const year = 2020 + index;
-                    return <option key={year} value={year}>{year}</option>;
-                  })}
+                  {graduationYears.map((year) => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
                 </Select>
               </div>
             </div>
@@ -279,9 +271,9 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
 
           {isAdmin ? (
             <div className="rounded-2xl border border-teal-600/15 bg-teal-50 p-4">
-              <h2 className="section-title">Admin workspace</h2>
+              <h2 className="section-title">Organizer workspace</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                College admins use CampusBridge to publish events, monitor registrations, and identify students looking for teams.
+                College organizers use CampusBridge to publish events, monitor registrations, and identify students looking for teams.
               </p>
             </div>
           ) : null}
@@ -302,21 +294,23 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
             </div>
           ) : null}
 
-          <div>
-            <label className="mb-2 block text-[13px] font-semibold text-slate-700">{roleMeta.skillsLabel}</label>
-            <div className="flex flex-wrap gap-2">
-              {skillChoices.map((skill) => (
-                <button
-                  key={skill}
-                  type="button"
-                  onClick={() => toggleSkill(skill)}
-                  className={`rounded-full border px-3 py-2 text-[12.5px] font-semibold transition ${skills.includes(skill) ? 'border-sky-500 bg-sky-50 text-sky-500' : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-white'}`}
-                >
-                  {skill}
-                </button>
-              ))}
+          {!isAdmin ? (
+            <div>
+              <label className="mb-2 block text-[13px] font-semibold text-slate-700">{roleMeta.skillsLabel}</label>
+              <div className="flex flex-wrap gap-2">
+                {skillChoices.map((skill) => (
+                  <button
+                    key={skill}
+                    type="button"
+                    onClick={() => toggleSkill(skill)}
+                    className={`rounded-full border px-3 py-2 text-[12.5px] font-semibold transition ${skills.includes(skill) ? 'border-sky-500 bg-sky-50 text-sky-500' : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-white'}`}
+                  >
+                    {skill}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div>
             <label className="mb-2 block text-[13px] font-semibold text-slate-700">{roleMeta.bioLabel}</label>
@@ -336,12 +330,12 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
       <aside className="space-y-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-soft">
           <h2 className="text-lg font-semibold text-slate-900">
-            {isAdmin ? 'Admin profile tips' : isAlumni ? 'Mentor profile tips' : 'Student profile tips'}
+            {isAdmin ? 'Organizer profile tips' : isAlumni ? 'Mentor profile tips' : 'Student profile tips'}
           </h2>
           <div className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
             {isAdmin ? (
               <>
-                <p>Pick capabilities like events, outreach, and placement so your admin account feels institution-led.</p>
+                <p>Keep your event focus and outreach details clear so the college workspace feels institution-led.</p>
                 <p>Use the note field for what your college wants to promote on CampusBridge.</p>
               </>
             ) : isAlumni ? (

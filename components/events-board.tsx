@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { EmptyState } from './EmptyState';
 import { EventCard } from './event-card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -174,7 +175,7 @@ export function EventsBoard({ events, currentRole }: EventsBoardProps) {
             </div>
           </div>
         )) : (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-10 text-center text-slate-600">No events match your filters yet.</div>
+          <EmptyState title="No events match your filters" description="Try a different type, status, or tag to find more opportunities." />
         )}
       </div>
     </div>

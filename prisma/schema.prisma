@@ -12,12 +12,15 @@ model User {
   id                 String                 @id @default(cuid())
   clerkId            String                 @unique
   email              String                 @unique
+  username           String                 @unique
   name               String
   role               Role                   @default(STUDENT)
   college            String
   branch             String?
   graduationYear     Int?
   bio                String?
+  headline           String?
+  industry           String?
   skills             String[]
   domain             String?
   currentCompany     String?
@@ -32,6 +35,15 @@ model User {
   receivedMessages   Message[]              @relation("ReceivedMessages")
   eventRegistrations EventRegistration[]
   credEvents         CredEvent[]
+  likes              Like[]
+  comments           Comment[]
+  shares             Share[]
+  bookmarks          Bookmark[]
+  orbitFrom          Orbit[]                @relation("OrbitFrom")
+  orbitTo            Orbit[]                @relation("OrbitTo")
+  mentorAs           MentorRelation[]       @relation("AsMentor")
+  menteeAs           MentorRelation[]       @relation("AsMentee")
+  pollVotes          PollVote[]
 }
 
 model College {
@@ -75,13 +87,26 @@ model EventRegistration {
 }
 
 model Post {
-  id        String   @id @default(cuid())
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  String
-  content   String
-  type      PostType @default(GENERAL)
-  likes     Int      @default(0)
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  authorId   String
+  body       String
+  type       PostType @default(TEXT)
+  imageUrls  String[] // Supabase Storage URLs
+  linkUrl    String?
+  visibility Visibility @default(PUBLIC)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  author     User     @relation(fields: [authorId], references: [id])
+  likes      Like[]
+  comments   Comment[]
+  shares     Share[]
+  bookmarks  Bookmark[]
+  poll       Poll?
+
+  @@index([authorId])
+  @@index([createdAt(sort: Desc)])
+  @@index([visibility, createdAt(sort: Desc)])
 }
 
 model Message {
@@ -104,10 +129,125 @@ model CredEvent {
   createdAt DateTime @default(now())
 }
 
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  post      Post     @relation(fields: [postId], references: [id])
+
+  @@unique([userId, postId])
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  authorId  String
+  postId    String
+  body      String
+  parentId  String?   // For threaded replies (1 level deep)
+  createdAt DateTime  @default(now())
+  author    User      @relation(fields: [authorId], references: [id])
+  post      Post      @relation(fields: [postId], references: [id])
+  parent    Comment?  @relation("Replies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("Replies")
+}
+
+model Share {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  note      String?  // Optional reshare caption
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  post      Post     @relation(fields: [postId], references: [id])
+
+  @@unique([userId, postId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  post      Post     @relation(fields: [postId], references: [id])
+
+  @@unique([userId, postId])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model Poll {
+  id      String       @id @default(cuid())
+  postId  String       @unique
+  post    Post         @relation(fields: [postId], references: [id])
+  options PollOption[]
+  endsAt  DateTime?
+}
+
+model PollOption {
+  id     String     @id @default(cuid())
+  pollId String
+  text   String
+  votes  PollVote[]
+  poll   Poll       @relation(fields: [pollId], references: [id])
+}
+
+model PollVote {
+  id       String     @id @default(cuid())
+  userId   String
+  optionId String
+  option   PollOption @relation(fields: [optionId], references: [id])
+  user     User       @relation(fields: [userId], references: [id])
+
+  @@unique([userId, optionId])
+}
+
+model Orbit {
+  id         String    @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  createdAt  DateTime  @default(now())
+
+  fromUser   User      @relation("OrbitFrom", fields: [fromUserId], references: [id])
+  toUser     User      @relation("OrbitTo",   fields: [toUserId],   references: [id])
+
+  @@unique([fromUserId, toUserId])
+  @@index([toUserId])
+}
+
+model MentorRelation {
+  id         String       @id @default(cuid())
+  mentorId   String
+  menteeId   String
+  status     MentorStatus @default(PENDING)
+  note       String?      // Student's intro message
+  startedAt  DateTime?
+  createdAt  DateTime     @default(now())
+
+  mentor     User         @relation("AsMentor", fields: [mentorId], references: [id])
+  mentee     User         @relation("AsMentee", fields: [menteeId], references: [id])
+
+  @@unique([mentorId, menteeId])
+}
+
 enum Role {
   STUDENT
   ALUMNI
   COLLEGE_ADMIN
+}
+
+enum Visibility {
+  PUBLIC
+  CONNECTIONS
+  COLLEGE_ONLY
+}
+
+enum MentorStatus {
+  PENDING
+  ACTIVE
+  DECLINED
+  ENDED
 }
 
 enum EventType {
@@ -118,7 +258,8 @@ enum EventType {
 }
 
 enum PostType {
-  GENERAL
-  ADVICE
-  OPPORTUNITY
+  TEXT
+  IMAGE
+  POLL
+  LINK
 }

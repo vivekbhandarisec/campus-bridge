@@ -41,9 +41,9 @@ const config: Config = {
         },
       },
       fontFamily: {
-        heading: ['Sora', 'sans-serif'],
-        sans: ['DM Sans', 'sans-serif'],
-        mono: ['DM Mono', 'monospace'],
+        heading: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
       },
       boxShadow: {
         soft: '0 1px 2px rgba(15, 30, 60, 0.05)',

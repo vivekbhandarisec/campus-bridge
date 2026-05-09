@@ -1,7 +1,67 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { unstable_cache } from 'next/cache';
 import prisma from '@/lib/prisma';
 import { awardCampusCred } from '@/lib/cred';
+import { supabase } from '@/lib/supabase';
+import type { PostType, Visibility } from '@prisma/client';
+
+const POST_TYPES = new Set(['TEXT', 'IMAGE', 'POLL', 'LINK']);
+const VISIBILITIES = new Set(['PUBLIC', 'CONNECTIONS', 'COLLEGE_ONLY']);
+
+async function uploadPostImages(files: File[], authorId: string) {
+  const imageUrls: string[] = [];
+
+  for (const file of files.slice(0, 4)) {
+    const extension = file.name.split('.').pop() || 'jpg';
+    const path = `${authorId}/${crypto.randomUUID()}.${extension}`;
+    const { error } = await supabase.storage
+      .from('post-images')
+      .upload(path, file, { contentType: file.type, upsert: false });
+
+    if (error) throw new Error(error.message);
+
+    const { data } = supabase.storage.from('post-images').getPublicUrl(path);
+    imageUrls.push(data.publicUrl);
+  }
+
+  return imageUrls;
+}
+
+const getPosts = unstable_cache(
+  async (cursor: string | null, limit: number) => {
+    const posts = await prisma.post.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      where: { visibility: 'PUBLIC' },
+      select: {
+        id: true,
+        authorId: true,
+        body: true,
+        type: true,
+        visibility: true,
+        createdAt: true,
+        imageUrls: true,
+        linkUrl: true,
+        author: {
+          select: {
+            name: true,
+            college: true,
+            avatarUrl: true,
+          },
+        },
+        _count: { select: { likes: true, comments: true, shares: true, bookmarks: true } },
+        likes: { where: { userId: 'dummy' }, select: { id: true }, take: 1 }, // Will be overridden
+        bookmarks: { where: { userId: 'dummy' }, select: { id: true }, take: 1 }, // Will be overridden
+      },
+    });
+
+    return posts;
+  },
+  ['public-posts'],
+  { revalidate: 30 } // Cache for 30 seconds
+);
 
 export async function GET(req: Request) {
   const { userId } = auth();
@@ -13,21 +73,51 @@ export async function GET(req: Request) {
   const cursor = url.searchParams.get('cursor');
   const limit = Math.min(Number(url.searchParams.get('limit')) || 20, 50);
 
-  const posts = await prisma.post.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: limit,
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    include: {
-      author: {
-        select: {
-          name: true,
-          college: true,
-          avatarUrl: true,
-        },
-      },
-    },
+  const posts = await getPosts(cursor, limit);
+
+  // Get current user for personalized data
+  const currentUser = await prisma.user.findUnique({
+    where: { clerkId: userId },
+    select: { id: true },
   });
-  return NextResponse.json(posts);
+  if (!currentUser) {
+    return NextResponse.json({ message: 'User not found' }, { status: 404 });
+  }
+
+  // Add personalized like/bookmark status
+  const postsWithPersonal = await Promise.all(
+    posts.map(async (post) => {
+      const [likes, bookmarks] = await Promise.all([
+        prisma.like.findFirst({
+          where: { userId: currentUser.id, postId: post.id },
+          select: { id: true },
+        }),
+        prisma.bookmark.findFirst({
+          where: { userId: currentUser.id, postId: post.id },
+          select: { id: true },
+        }),
+      ]);
+      return {
+        ...post,
+        likes: likes ? [{ id: likes.id }] : [],
+        bookmarks: bookmarks ? [{ id: bookmarks.id }] : [],
+      };
+    })
+  );
+
+  const hasMore = postsWithPersonal.length > limit;
+  const page = hasMore ? postsWithPersonal.slice(0, limit) : postsWithPersonal;
+
+  return NextResponse.json({
+    posts: page.map((post) => ({
+      ...post,
+      isLiked: post.likes.length > 0,
+      isBookmarked: post.bookmarks.length > 0,
+      likes: undefined,
+      bookmarks: undefined,
+    })),
+    nextCursor: hasMore ? page[page.length - 1]?.id ?? null : null,
+  });
 }
 
 export async function POST(req: Request) {
@@ -36,21 +126,73 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const currentUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+  const currentUser = await prisma.user.findUnique({
+    where: { clerkId: userId },
+    select: { id: true },
+  });
   if (!currentUser) {
     return NextResponse.json({ message: 'User not found' }, { status: 404 });
   }
 
-  const { content, type } = await req.json();
-  if (!content || !type) {
-    return NextResponse.json({ message: 'Missing content or type' }, { status: 400 });
+  const contentType = req.headers.get('content-type') ?? '';
+  let body = '';
+  let type: PostType = 'TEXT';
+  let visibility: Visibility = 'PUBLIC';
+  let linkUrl: string | null = null;
+  let imageUrls: string[] = [];
+  let pollOptions: string[] = [];
+  let files: File[] = [];
+
+  if (contentType.includes('multipart/form-data')) {
+    const formData = await req.formData();
+    body = String(formData.get('body') ?? '').trim();
+    const rawType = String(formData.get('type') ?? 'TEXT');
+    const rawVisibility = String(formData.get('visibility') ?? 'PUBLIC');
+    type = (POST_TYPES.has(rawType) ? rawType : 'TEXT') as PostType;
+    visibility = (VISIBILITIES.has(rawVisibility) ? rawVisibility : 'PUBLIC') as Visibility;
+    linkUrl = String(formData.get('linkUrl') ?? '').trim() || null;
+    pollOptions = JSON.parse(String(formData.get('pollOptions') ?? '[]')).filter(Boolean);
+
+    files = Array.from(formData.values()).filter(
+      (value): value is File => value instanceof File && value.type.startsWith('image/'),
+    );
+    if (files.length > 0) imageUrls = await uploadPostImages(files, currentUser.id);
+  } else {
+    const payload = await req.json();
+    body = String(payload.body ?? '').trim();
+    const rawType = String(payload.type ?? 'TEXT');
+    const rawVisibility = String(payload.visibility ?? 'PUBLIC');
+    type = (POST_TYPES.has(rawType) ? rawType : 'TEXT') as PostType;
+    visibility = (VISIBILITIES.has(rawVisibility) ? rawVisibility : 'PUBLIC') as Visibility;
+    linkUrl = payload.linkUrl ?? null;
+    imageUrls = Array.isArray(payload.imageUrls) ? payload.imageUrls.slice(0, 4) : [];
+    pollOptions = Array.isArray(payload.pollOptions) ? payload.pollOptions.filter(Boolean) : [];
+  }
+
+  if (!body && type === 'TEXT') {
+    return NextResponse.json({ message: 'Missing body or type' }, { status: 400 });
+  }
+  if (type === 'POLL' && pollOptions.length < 2) {
+    return NextResponse.json({ message: 'Poll posts need at least two options' }, { status: 400 });
+  }
+  if (type === 'LINK' && !linkUrl) {
+    return NextResponse.json({ message: 'Link posts need a URL' }, { status: 400 });
+  }
+  if (type === 'IMAGE' && imageUrls.length === 0) {
+    return NextResponse.json({ message: 'Image posts need at least one image' }, { status: 400 });
   }
 
   const post = await prisma.post.create({
     data: {
       authorId: currentUser.id,
-      content,
+      body,
       type,
+      visibility,
+      imageUrls: type === 'IMAGE' ? [] : imageUrls, // Will update after upload
+      linkUrl,
+      poll: type === 'POLL'
+        ? { create: { options: { create: pollOptions.slice(0, 4).map((text) => ({ text })) } } }
+        : undefined,
     },
     include: {
       author: {
@@ -60,9 +202,26 @@ export async function POST(req: Request) {
           avatarUrl: true,
         },
       },
+      poll: { include: { options: { include: { _count: { select: { votes: true } } } } } },
+      _count: { select: { likes: true, comments: true, shares: true, bookmarks: true } },
     },
   });
 
-  await awardCampusCred(currentUser.id, 10, 'created_post');
+  // Upload images asynchronously if present
+  if (type === 'IMAGE' && files.length > 0) {
+    try {
+      const uploadedUrls = await uploadPostImages(files, currentUser.id);
+      await prisma.post.update({
+        where: { id: post.id },
+        data: { imageUrls: uploadedUrls },
+      });
+      post.imageUrls = uploadedUrls;
+    } catch (uploadError) {
+      console.error('Image upload failed:', uploadError);
+      // Post is created, but without images - could notify user or retry
+    }
+  }
+
+  await awardCampusCred(currentUser.id, 5, 'created_post');
   return NextResponse.json(post);
 }
