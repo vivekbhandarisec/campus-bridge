@@ -7,7 +7,6 @@ import { CalendarDays, Gauge, Home, Medal, MessageSquare, Search, Settings, Spar
 import type { Role } from '@prisma/client';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { ThemeToggle } from './theme-toggle';
 
 export function Navbar({ role }: { role: Role | null }) {
   const pathname = usePathname();
@@ -53,7 +52,6 @@ export function Navbar({ role }: { role: Role | null }) {
         </nav>
 
         <div className="flex items-center gap-3">
-          <ThemeToggle />
           <SignedIn>
             {role === 'STUDENT' && (
               <Link href="/match" className="hidden items-center gap-2 rounded-[10px] border border-primary-500/15 bg-gradient-to-r from-primary-50 to-primary-100 px-3 py-2 text-sm font-semibold text-primary-600 transition-all duration-300 hover:shadow-premium md:inline-flex">

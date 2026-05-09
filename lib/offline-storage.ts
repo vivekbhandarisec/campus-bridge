@@ -22,7 +22,7 @@ class OfflineStorage {
   static setCache(key: string, data: any, ttl: number = 5 * 60 * 1000) { // Default 5 minutes
     if (typeof window === 'undefined') return;
     
-    const cache = this.getCache();
+    const cache = this.getAllCache();
     cache[key] = {
       data,
       timestamp: Date.now(),
@@ -35,7 +35,7 @@ class OfflineStorage {
   static getCache(key: string): any | null {
     if (typeof window === 'undefined') return null;
     
-    const cache = this.getCache();
+    const cache = this.getAllCache();
     const item = cache[key];
     
     if (!item) return null;
@@ -50,7 +50,7 @@ class OfflineStorage {
   }
 
   // Get entire cache
-  static getCache(): OfflineCache {
+  static getAllCache(): OfflineCache {
     if (typeof window === 'undefined') return {};
     
     try {

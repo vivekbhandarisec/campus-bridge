@@ -14,7 +14,7 @@ const connectionString = process.env.DATABASE_URL
 
 const prisma = connectionString
   ? global.prisma || new PrismaClient({
-      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+      log: process.env.DEBUG_PRISMA_QUERIES === 'true' ? ['query', 'error', 'warn'] : ['error', 'warn'],
       datasources: {
         db: {
           url: connectionString,
