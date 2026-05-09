@@ -28,6 +28,7 @@ interface DashboardData {
     college: string | null;
     campusCred: number;
     skills: string[];
+    domain: string | null;
     isAvailable: boolean;
   };
   events: Array<{
@@ -49,6 +50,7 @@ interface DashboardData {
     currentCompany: string | null;
     avatarUrl: string | null;
     campusCred: number;
+    matchScore: number;
   }>;
   mentorshipRequests?: Array<{
     id: string;
@@ -63,19 +65,34 @@ interface DashboardData {
 }
 
 export default function OptimizedDashboard() {
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      fetch('/api/dashboard')
-        .then(res => res.json())
-        .then(setData)
-        .catch(console.error)
-        .finally(() => setLoading(false));
+    if (userLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
     }
-  }, [user]);
+
+    const controller = new AbortController();
+    setLoading(true);
+    fetch('/api/dashboard', { cache: 'no-store', signal: controller.signal })
+        .then((res) => {
+          if (!res.ok) throw new Error('Unable to load dashboard');
+          return res.json();
+        })
+        .then(setData)
+        .catch((error) => {
+          if ((error as Error).name !== 'AbortError') console.error(error);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setLoading(false);
+        });
+
+    return () => controller.abort();
+  }, [user, userLoading]);
 
   if (loading) {
     return (
@@ -181,7 +198,7 @@ export default function OptimizedDashboard() {
 
         {/* Role-specific content */}
         <div>
-          {data.user.role === 'STUDENT' && data.alumniMatches && (
+          {data.user.role === 'STUDENT' && data.alumniMatches && data.alumniMatches.length > 0 && (
             <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-slate-900 mb-4">Recommended Mentors</h3>
               <div className="space-y-3">
@@ -193,7 +210,7 @@ export default function OptimizedDashboard() {
                       <p className="text-sm text-slate-600">{alumni.currentCompany}</p>
                     </div>
                     <span className="px-2 py-1 text-xs font-medium bg-slate-100 text-slate-700 rounded-full">
-                    {alumni.campusCred} Cred
+                    Mentor
                   </span>
                   </div>
                 ))}

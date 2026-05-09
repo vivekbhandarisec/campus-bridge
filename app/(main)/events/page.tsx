@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
+import { unstable_noStore as noStore } from 'next/cache';
 import prisma from '@/lib/prisma';
 import { EventsBoard } from '@/components/events-board';
 
@@ -10,6 +11,7 @@ async function getEvents(userId: string, filters?: {
   endDate?: string;
   search?: string;
 }) {
+  noStore();
   const user = await prisma.user.findUnique({ where: { clerkId: userId } });
   
   const whereClause: any = {};
@@ -44,14 +46,14 @@ async function getEvents(userId: string, filters?: {
 
   const events = await prisma.event.findMany({
     where: whereClause,
-    orderBy: { startDate: 'asc' },
+    orderBy: [{ createdAt: 'desc' }, { startDate: 'asc' }],
     include: { college: true },
   });
   
   return { user, events };
 }
 
-export const revalidate = 60; // Revalidate every 60 seconds
+export const dynamic = 'force-dynamic';
 
 interface EventsPageProps {
   searchParams?: {

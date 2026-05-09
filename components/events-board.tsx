@@ -49,11 +49,13 @@ export function EventsBoard({ events, currentRole, filters }: EventsBoardProps) 
   }, [events]);
 
   const filtered = useMemo(() => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
     return events.filter((event) => {
       if (typeFilter !== 'ALL' && event.type !== typeFilter) return false;
-      const now = new Date();
-      if (statusFilter === 'UPCOMING' && new Date(event.startDate) < now) return false;
-      if (statusFilter === 'PAST' && new Date(event.startDate) >= now) return false;
+      if (statusFilter === 'UPCOMING' && new Date(event.startDate) < startOfToday) return false;
+      if (statusFilter === 'PAST' && new Date(event.startDate) >= startOfToday) return false;
       if (tagFilter !== 'ALL' && !event.tags.includes(tagFilter)) return false;
       return true;
     });

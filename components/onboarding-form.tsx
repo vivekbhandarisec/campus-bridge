@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useUser, SignInButton, SignedOut, SignedIn } from '@clerk/nextjs';
+import { useUser, SignedOut, SignedIn } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -139,8 +140,8 @@ export default function OnboardingPage() {
       }
 
       if (storageKey) window.localStorage.removeItem(storageKey);
-      router.refresh();
       router.push('/dashboard');
+      router.refresh();
     } catch (error) {
       setError((error as Error).message);
     } finally {
@@ -161,9 +162,9 @@ export default function OnboardingPage() {
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-700">
             <p>You need to sign in first.</p>
             <div className="mt-4 flex justify-center">
-              <SignInButton mode="modal">
-                <Button>Sign in</Button>
-              </SignInButton>
+              <Link href="/sign-in" className="inline-flex h-10 items-center justify-center rounded-[10px] bg-sky-500 px-4 text-sm font-semibold text-white shadow-action transition hover:-translate-y-px hover:bg-sky-400">
+                Sign in
+              </Link>
             </div>
           </div>
         </SignedOut>

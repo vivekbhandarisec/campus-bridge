@@ -46,30 +46,32 @@ export function PostActionsSimple({ postId, isAuthor, onEdit, onDelete, onReport
 
   return (
     <>
-      <Button
-        className="h-8 w-8 p-0 text-slate-600 hover:text-slate-900 bg-transparent border-0 shadow-none hover:bg-slate-100"
-        onClick={() => {
-          if (isAuthor) {
-            onEdit?.();
-          } else {
-            handleReport();
-          }
-        }}
-        aria-label={isAuthor ? 'Edit post' : 'Report post'}
-      >
-        {isAuthor ? <Edit className="h-4 w-4" /> : <Flag className="h-4 w-4" />}
-      </Button>
-
-      {isAuthor && (
+      <div className="flex shrink-0 items-center gap-2 self-start sm:self-auto">
         <Button
-          className="h-8 w-8 p-0 text-red-600 hover:text-red-900 bg-transparent border-0 shadow-none hover:bg-red-100 ml-2"
-          onClick={handleDelete}
-          disabled={isDeleting}
-          aria-label="Delete post"
+          className="h-8 w-8 border-0 bg-transparent p-0 text-slate-600 shadow-none hover:bg-slate-100 hover:text-slate-900"
+          onClick={() => {
+            if (isAuthor) {
+              onEdit?.();
+            } else {
+              handleReport();
+            }
+          }}
+          aria-label={isAuthor ? 'Edit post' : 'Report post'}
         >
-          <Trash2 className="h-4 w-4" />
+          {isAuthor ? <Edit className="h-4 w-4" /> : <Flag className="h-4 w-4" />}
         </Button>
-      )}
+
+        {isAuthor && (
+          <Button
+            className="h-8 w-8 border-0 bg-transparent p-0 text-red-600 shadow-none hover:bg-red-100 hover:text-red-900"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            aria-label="Delete post"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
 
       <ReportModal
         isOpen={showReportModal}

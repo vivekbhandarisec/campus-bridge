@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import type { Role } from '@prisma/client';
 
@@ -26,7 +26,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async (signal?: AbortSignal) => {
     if (!userId) {
       setUser(null);
       setLoading(false);
@@ -35,26 +35,40 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     try {
       setLoading(true);
-      const response = await fetch('/api/users/me');
+      const response = await fetch('/api/users/me', {
+        cache: 'no-store',
+        signal,
+      });
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
+      } else if (response.status === 401 || response.status === 404) {
+        setUser(null);
       }
     } catch (error) {
-      console.error('Failed to fetch user data:', error);
+      if ((error as Error).name !== 'AbortError') {
+        console.error('Failed to fetch user data:', error);
+      }
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
-  };
+  }, [userId]);
 
   useEffect(() => {
-    if (isLoaded) {
-      refreshUser();
+    if (!isLoaded) {
+      setLoading(true);
+      return;
     }
-  }, [userId, isLoaded]);
+
+    const controller = new AbortController();
+    refreshUser(controller.signal);
+    return () => controller.abort();
+  }, [isLoaded, refreshUser]);
+
+  const value = useMemo(() => ({ user, loading, refreshUser: () => refreshUser() }), [loading, refreshUser, user]);
 
   return (
-    <UserContext.Provider value={{ user, loading, refreshUser }}>
+    <UserContext.Provider value={value}>
       {children}
     </UserContext.Provider>
   );

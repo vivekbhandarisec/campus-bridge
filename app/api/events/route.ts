@@ -1,7 +1,10 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import type { EventType } from '@prisma/client';
 import prisma from '@/lib/prisma';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   const { userId } = auth();
@@ -16,7 +19,7 @@ export async function GET(req: Request) {
   const events = await prisma.event.findMany({
     where: eventType ? { type: eventType } : undefined,
     include: { college: { select: { name: true } } },
-    orderBy: { startDate: 'asc' },
+    orderBy: [{ createdAt: 'desc' }, { startDate: 'asc' }],
   });
 
   return NextResponse.json(events);
@@ -54,11 +57,15 @@ export async function POST(req: Request) {
       registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : null,
       prize,
       teamSize,
-      tags: Array.isArray(tags) ? tags : [],
+      tags: Array.isArray(tags) ? tags.map((tag) => String(tag).trim()).filter(Boolean) : [],
       link,
     },
     include: { college: { select: { name: true } } },
   });
+
+  revalidatePath('/events');
+  revalidatePath('/feed');
+  revalidatePath('/dashboard');
 
   return NextResponse.json(event);
 }

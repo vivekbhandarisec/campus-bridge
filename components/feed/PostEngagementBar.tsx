@@ -128,11 +128,11 @@ export function PostEngagementBar({
   };
 
   return (
-    <div className="mt-3 border-t border-border pt-3">
-      <div className="flex items-center gap-1">
+    <div className="min-w-0 flex-1">
+      <div className="flex flex-wrap items-center gap-1">
         <button
           onClick={handleLike}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors ${
+          className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors ${
             liked
               ? 'bg-red-50 text-red-500'
               : 'text-muted-foreground hover:bg-red-50 hover:text-red-500'
@@ -144,7 +144,7 @@ export function PostEngagementBar({
         </button>
 
         <button
-          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-muted-foreground transition-colors hover:bg-sky-50 hover:text-sky-500"
+          className="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-muted-foreground transition-colors hover:bg-sky-50 hover:text-sky-500"
           onClick={() => setCommentsOpen((value) => !value)}
           type="button"
         >
@@ -153,7 +153,7 @@ export function PostEngagementBar({
         </button>
 
         <button
-          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-muted-foreground transition-colors hover:bg-emerald-50 hover:text-emerald-500"
+          className="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-muted-foreground transition-colors hover:bg-emerald-50 hover:text-emerald-500"
           onClick={handleShare}
           type="button"
         >
@@ -161,7 +161,7 @@ export function PostEngagementBar({
           <span className="text-sm font-medium">{shares}</span>
         </button>
 
-        <div className="ml-auto">
+        <div className="ml-auto shrink-0">
           <button
             onClick={handleBookmark}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors ${
@@ -177,7 +177,7 @@ export function PostEngagementBar({
       </div>
 
       {commentsOpen ? (
-        <div className="mt-3 space-y-3 rounded-xl bg-slate-50 p-3">
+        <div className="mt-3 min-w-0 space-y-3 rounded-xl bg-slate-50 p-3">
           <form onSubmit={handleComment} className="flex gap-2">
             <input
               value={commentText}
@@ -197,12 +197,12 @@ export function PostEngagementBar({
           {error ? <p className="text-sm text-danger-600">{error}</p> : null}
           <div className="space-y-2">
             {comments.length > 0 ? comments.map((comment) => (
-              <div key={comment.id} className="rounded-lg border border-border bg-white p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-foreground">{comment.author.name}</p>
-                  <span className="text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleDateString('en-IN')}</span>
+              <div key={comment.id} className="min-w-0 rounded-lg border border-border bg-white p-3">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                  <p className="min-w-0 break-words text-sm font-semibold text-foreground [overflow-wrap:anywhere]">{comment.author.name}</p>
+                  <span className="shrink-0 text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleDateString('en-IN')}</span>
                 </div>
-                <p className="mt-1 text-sm leading-6 text-foreground">{comment.body}</p>
+                <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-foreground [overflow-wrap:anywhere]">{comment.body}</p>
               </div>
             )) : (
               <p className="py-2 text-sm text-muted-foreground">No comments yet.</p>

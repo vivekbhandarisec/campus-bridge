@@ -3,7 +3,6 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { SessionRefresh } from '@/components/session-refresh';
 import { UserProvider } from '@/contexts/UserContext';
 import { ErrorBoundary } from '@/components/error-boundary';
-import { PageTransition } from '@/components/page-transition';
 import './globals.css';
 
 const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
@@ -41,9 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ClerkProvider>
           <ErrorBoundary>
             <UserProvider>
-              <PageTransition>
-                <SessionRefresh>{children}</SessionRefresh>
-              </PageTransition>
+              <SessionRefresh>{children}</SessionRefresh>
             </UserProvider>
           </ErrorBoundary>
         </ClerkProvider>

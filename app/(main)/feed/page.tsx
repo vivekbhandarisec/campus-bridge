@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { CalendarDays, Sparkles, Trophy } from 'lucide-react';
 import { isProfileComplete } from '@/lib/profile-completion';
-import { PostSkeleton, ProfileCardSkeleton, EventCardSkeleton } from '@/components/skeletons';
+import { isSuitableMatch, scoreMentorMatch } from '@/lib/match-score';
 
 async function getData(userId: string) {
   const today = new Date();
@@ -32,6 +32,13 @@ async function getData(userId: string) {
       campusCred: true,
     },
   });
+
+  const matchCandidateFilters = currentUser
+    ? [
+        ...(currentUser.domain ? [{ domain: currentUser.domain }] : []),
+        ...(currentUser.skills.length > 0 ? [{ skills: { hasSome: currentUser.skills } }] : []),
+      ]
+    : [];
 
   const [posts, events, alumniMatches] = await Promise.all([
     prisma.post.findMany({
@@ -60,19 +67,26 @@ async function getData(userId: string) {
           { createdAt: { gte: recentlyPublished } },
         ],
       },
-      orderBy: [{ startDate: 'asc' }, { createdAt: 'desc' }],
-      take: 3,
+      orderBy: [{ createdAt: 'desc' }, { startDate: 'asc' }],
+      take: 5,
       include: { college: { select: { name: true } } },
     }),
     currentUser?.role === 'STUDENT'
       ? prisma.user.findMany({
-          where: { role: 'ALUMNI', isAvailable: true },
+          where: {
+            role: 'ALUMNI',
+            isAvailable: true,
+            ...(matchCandidateFilters.length > 0 ? { OR: matchCandidateFilters } : {}),
+          },
           orderBy: [{ campusCred: 'desc' }, { name: 'asc' }],
-          take: 3,
+          take: 10,
           select: {
             id: true,
             name: true,
+            domain: true,
+            skills: true,
             currentCompany: true,
+            campusCred: true,
           },
         })
       : Promise.resolve([]),
@@ -88,7 +102,14 @@ async function getData(userId: string) {
       bookmarks: undefined,
     })),
     events,
-    alumniMatches,
+    alumniMatches:
+      currentUser?.role === 'STUDENT'
+        ? alumniMatches
+            .map((mentor) => ({ ...mentor, matchScore: scoreMentorMatch(currentUser, mentor) }))
+            .filter((mentor) => isSuitableMatch(mentor.matchScore))
+            .sort((a, b) => b.matchScore - a.matchScore || b.campusCred - a.campusCred || a.name.localeCompare(b.name))
+            .slice(0, 3)
+        : [],
   };
 }
 
@@ -168,20 +189,16 @@ export default async function FeedPage({ searchParams }: { searchParams?: { noti
             )}
           </div>
         </div>
-        {isStudent ? (
+        {isStudent && alumniMatches.length > 0 ? (
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <h2 className="section-title">Your matches</h2>
             <div className="mt-4 space-y-4">
-              {alumniMatches.length > 0 ? (
-                alumniMatches.map((alumni) => (
+              {alumniMatches.map((alumni) => (
                   <div key={alumni.id} className="rounded-xl border border-teal-600/15 bg-teal-50 p-3">
                     <p className="font-semibold text-slate-900">{alumni.name}</p>
                     <p className="text-sm leading-6 text-foreground">{alumni.currentCompany || 'Mentor'}</p>
                   </div>
-                ))
-              ) : (
-                <EmptyState title="No matches yet" description="Complete your profile and check back when more alumni are available." />
-              )}
+                ))}
             </div>
           </div>
         ) : null}

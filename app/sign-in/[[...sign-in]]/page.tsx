@@ -10,7 +10,7 @@ export default function SignInPage() {
           <h1 className="page-title">Welcome to CampusBridge</h1>
           <p className="mt-2 text-sm text-slate-500">Sign in to complete your profile and unlock mentorship, events, and more.</p>
         </div>
-        <SignIn routing="path" path="/sign-in" redirectUrl="/onboarding" />
+        <SignIn routing="path" path="/sign-in" redirectUrl="/onboarding" signUpUrl="/sign-in" />
       </div>
     </div>
   );
