@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { CalendarDays, Sparkles, Trophy } from 'lucide-react';
 import { isProfileComplete } from '@/lib/profile-completion';
+import { PostSkeleton, ProfileCardSkeleton, EventCardSkeleton } from '@/components/skeletons';
 
 async function getData(userId: string) {
   const today = new Date();
@@ -45,7 +46,7 @@ async function getData(userId: string) {
         createdAt: true,
         imageUrls: true,
         linkUrl: true,
-        author: { select: { name: true, college: true, avatarUrl: true } },
+        author: { select: { id: true, name: true, college: true, avatarUrl: true } },
         poll: { include: { options: { include: { _count: { select: { votes: true } } } } } },
         _count: { select: { likes: true, comments: true, shares: true, bookmarks: true } },
         likes: { where: { user: { clerkId: userId } }, select: { id: true }, take: 1 },
@@ -131,7 +132,7 @@ export default async function FeedPage({ searchParams }: { searchParams?: { noti
             </div>
           </div>
           <div className="mt-6 space-y-4">
-            {posts.length > 0 ? posts.map((post) => <PostCard key={post.id} post={post} />) : (
+            {posts.length > 0 ? posts.map((post) => <PostCard key={post.id} post={post} currentUserId={currentUser.id} />) : (
               <EmptyState title="No posts yet" description="Share the first update for your campus community." />
             )}
           </div>

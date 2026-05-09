@@ -5,8 +5,22 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
-const prisma = process.env.DATABASE_URL
-  ? global.prisma || new PrismaClient()
+// Add connection pool configuration to prevent timeouts
+const connectionString = process.env.DATABASE_URL 
+  ? process.env.DATABASE_URL.includes('connection_limit') 
+    ? process.env.DATABASE_URL 
+    : `${process.env.DATABASE_URL}?connection_limit=10&pool_timeout=20`
+  : undefined;
+
+const prisma = connectionString
+  ? global.prisma || new PrismaClient({
+      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+      datasources: {
+        db: {
+          url: connectionString,
+        },
+      },
+    })
   : undefined;
 
 if (process.env.NODE_ENV !== 'production') global.prisma = prisma;

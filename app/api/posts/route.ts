@@ -52,8 +52,6 @@ const getPosts = unstable_cache(
           },
         },
         _count: { select: { likes: true, comments: true, shares: true, bookmarks: true } },
-        likes: { where: { userId: 'dummy' }, select: { id: true }, take: 1 }, // Will be overridden
-        bookmarks: { where: { userId: 'dummy' }, select: { id: true }, take: 1 }, // Will be overridden
       },
     });
 
@@ -84,37 +82,29 @@ export async function GET(req: Request) {
     return NextResponse.json({ message: 'User not found' }, { status: 404 });
   }
 
-  // Add personalized like/bookmark status
-  const postsWithPersonal = await Promise.all(
-    posts.map(async (post) => {
-      const [likes, bookmarks] = await Promise.all([
-        prisma.like.findFirst({
-          where: { userId: currentUser.id, postId: post.id },
-          select: { id: true },
-        }),
-        prisma.bookmark.findFirst({
-          where: { userId: currentUser.id, postId: post.id },
-          select: { id: true },
-        }),
-      ]);
-      return {
-        ...post,
-        likes: likes ? [{ id: likes.id }] : [],
-        bookmarks: bookmarks ? [{ id: bookmarks.id }] : [],
-      };
-    })
-  );
+  const postIds = posts.map((post) => post.id);
+  const [likedPosts, bookmarkedPosts] = await Promise.all([
+    prisma.like.findMany({
+      where: { userId: currentUser.id, postId: { in: postIds } },
+      select: { postId: true },
+    }),
+    prisma.bookmark.findMany({
+      where: { userId: currentUser.id, postId: { in: postIds } },
+      select: { postId: true },
+    }),
+  ]);
 
-  const hasMore = postsWithPersonal.length > limit;
-  const page = hasMore ? postsWithPersonal.slice(0, limit) : postsWithPersonal;
+  const likedPostIds = new Set(likedPosts.map((like) => like.postId));
+  const bookmarkedPostIds = new Set(bookmarkedPosts.map((bookmark) => bookmark.postId));
+
+  const hasMore = posts.length > limit;
+  const page = hasMore ? posts.slice(0, limit) : posts;
 
   return NextResponse.json({
     posts: page.map((post) => ({
       ...post,
-      isLiked: post.likes.length > 0,
-      isBookmarked: post.bookmarks.length > 0,
-      likes: undefined,
-      bookmarks: undefined,
+      isLiked: likedPostIds.has(post.id),
+      isBookmarked: bookmarkedPostIds.has(post.id),
     })),
     nextCursor: hasMore ? page[page.length - 1]?.id ?? null : null,
   });

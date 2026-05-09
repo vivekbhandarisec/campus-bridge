@@ -1,5 +1,9 @@
 const nextConfig = {
   reactStrictMode: true,
+  compress: true,
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
   images: {
     remotePatterns: [
       {
@@ -7,6 +11,9 @@ const nextConfig = {
         hostname: '**',
       },
     ],
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
   },
 };
 

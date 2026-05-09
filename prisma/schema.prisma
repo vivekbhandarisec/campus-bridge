@@ -44,6 +44,12 @@ model User {
   mentorAs           MentorRelation[]       @relation("AsMentor")
   menteeAs           MentorRelation[]       @relation("AsMentee")
   pollVotes          PollVote[]
+
+  @@index([clerkId])
+  @@index([role])
+  @@index([college])
+  @@index([campusCred])
+  @@index([isAvailable])
 }
 
 model College {
@@ -118,6 +124,11 @@ model Message {
   content    String
   read       Boolean  @default(false)
   createdAt  DateTime @default(now())
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([senderId, receiverId, createdAt])
+  @@index([receiverId, read])
 }
 
 model CredEvent {
@@ -229,6 +240,8 @@ model MentorRelation {
   mentee     User         @relation("AsMentee", fields: [menteeId], references: [id])
 
   @@unique([mentorId, menteeId])
+  @@index([mentorId, status])
+  @@index([menteeId, status])
 }
 
 enum Role {
@@ -262,4 +275,33 @@ enum PostType {
   IMAGE
   POLL
   LINK
+}
+
+enum ReportType {
+  POST
+  USER
+  COMMENT
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+model Report {
+  id         String        @id @default(cuid())
+  reporterId String
+  itemType   ReportType
+  itemId     String
+  reason     String
+  description String?
+  status     ReportStatus @default(PENDING)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([reporterId])
+  @@index([itemType, itemId])
+  @@index([status])
 }

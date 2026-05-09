@@ -13,22 +13,27 @@ html {
 
 body {
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.06), transparent 28rem),
-    linear-gradient(180deg, #ffffff 0%, #f8fafc 26rem);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 26rem);
   color: #1e293b;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark body {
+  background: linear-gradient(180deg, #0a0a0a 0%, #141414 26rem);
+  color: #e5e5e5;
 }
 
 ::selection {
-  background: rgba(37, 99, 235, 0.16);
+  background: rgba(59, 142, 237, 0.16);
 }
 
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 2px solid rgba(37, 99, 235, 0.65);
+  outline: 2px solid rgba(59, 142, 237, 0.65);
   outline-offset: 2px;
 }
 
@@ -40,24 +45,151 @@ h3,
   color: #0f1e3c;
 }
 
+.dark h1,
+.dark h2,
+.dark h3,
+.dark .font-heading {
+  color: #e5e5e5;
+}
+
 @layer components {
   .app-card {
-    @apply rounded-2xl border border-slate-200 bg-white shadow-soft;
+    @apply rounded-2xl border border-slate-200 bg-white shadow-premium;
+  }
+
+  .dark .app-card {
+    @apply bg-dark-card border-dark-border shadow-glass;
   }
 
   .app-card-muted {
     @apply rounded-2xl border border-slate-200 bg-slate-50;
   }
 
+  .dark .app-card-muted {
+    @apply bg-dark-surface border-dark-border;
+  }
+
   .section-label {
     @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400;
+  }
+
+  .dark .section-label {
+    @apply text-dark-textSecondary;
   }
 
   .page-title {
     @apply font-heading text-[28px] font-bold leading-tight tracking-[-0.025em] text-navy;
   }
 
+  .dark .page-title {
+    @apply text-dark-text;
+  }
+
   .section-title {
     @apply font-heading text-[20px] font-bold leading-tight tracking-[-0.02em] text-navy;
+  }
+
+  .dark .section-title {
+    @apply text-dark-text;
+  }
+
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-glass;
+  }
+
+  .dark .glass-card {
+    @apply bg-dark-card/70 backdrop-blur-xl border-dark-border/30;
+  }
+
+  .premium-button {
+    @apply bg-gradient-to-r from-primary-500 to-primary-600 text-white font-medium rounded-xl px-6 py-3 shadow-premium hover:shadow-luxury transition-all duration-300 transform hover:-translate-y-0.5;
+  }
+
+  .premium-button:hover {
+    @apply bg-gradient-to-r from-primary-600 to-primary-700;
+  }
+
+  .glass-button {
+    @apply bg-white/80 backdrop-blur-md border border-white/30 font-medium rounded-xl px-6 py-3 shadow-soft hover:shadow-premium transition-all duration-300;
+  }
+
+  .dark .glass-button {
+    @apply bg-dark-surface/80 border-dark-border text-dark-text;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulse-subtle {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  .animate-in {
+    animation: fade-in 0.3s ease-out forwards;
+  }
+
+  .animate-in-slide-up {
+    animation: slide-up 0.4s ease-out forwards;
+  }
+
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s linear infinite;
+    background: linear-gradient(
+      to right,
+      transparent 0%,
+      rgba(255, 255, 255, 0.5) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
   }
 }

@@ -1,21 +1,8 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import openai from '@/lib/openai';
 
-async function createProfileEmbedding(profileText: string) {
-  try {
-    const embeddingResponse = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: profileText,
-    });
-
-    const embedding = embeddingResponse.data[0]?.embedding;
-    if (embedding?.length) return embedding;
-  } catch (error) {
-    console.warn('OpenAI embedding failed during profile update, using fallback embedding:', error);
-  }
-
+function createProfileEmbedding(profileText: string) {
   return new Array(1536).fill(0).map((_, index) => {
     const charCode = profileText.charCodeAt(index % Math.max(profileText.length, 1)) || 0;
     return ((charCode + index) % 2000) / 1000 - 1;
@@ -108,7 +95,7 @@ export async function PUT(req: Request) {
     const profileText = isCollegeAdmin
       ? `Name: ${existingUser.name}. Role: ${normalizedRole}. College: ${college}.${bio ? ` Organizer note: ${bio}.` : ''}`
       : `Name: ${existingUser.name}. Role: ${normalizedRole}. College: ${college}. Domain: ${normalizedDomain}. Skills: ${normalizedSkills.join(', ')}.${bio ? ` Bio: ${bio}.` : ''}${mentorCompany ? ` Currently at: ${mentorCompany}.` : ''} Graduation year: ${parsedGraduationYear ?? 'N/A'}.`;
-    const embeddingVector = JSON.stringify(await createProfileEmbedding(profileText));
+    const embeddingVector = JSON.stringify(createProfileEmbedding(profileText));
 
     const users = await prisma.$queryRaw`
       UPDATE "User"

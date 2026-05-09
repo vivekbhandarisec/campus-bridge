@@ -13,11 +13,18 @@ import type { Event, Role } from '@prisma/client';
 interface EventsBoardProps {
   events: Array<Event & { college: { name: string } }>;
   currentRole: Role;
+  filters?: {
+    type?: string;
+    college?: string;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+  };
 }
 
-export function EventsBoard({ events, currentRole }: EventsBoardProps) {
+export function EventsBoard({ events, currentRole, filters }: EventsBoardProps) {
   const router = useRouter();
-  const [typeFilter, setTypeFilter] = useState('ALL');
+  const [typeFilter, setTypeFilter] = useState(filters?.type || 'ALL');
   const [statusFilter, setStatusFilter] = useState('UPCOMING');
   const [tagFilter, setTagFilter] = useState('ALL');
   const [showCreate, setShowCreate] = useState(false);

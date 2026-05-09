@@ -3,21 +3,8 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
 import { normalizeUsername } from '@/lib/utils';
-import openai from '@/lib/openai';
 
-async function createProfileEmbedding(profileText: string) {
-  try {
-    const embeddingResponse = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: profileText,
-    });
-
-    const embedding = embeddingResponse.data[0]?.embedding;
-    if (embedding?.length) return embedding;
-  } catch (error) {
-    console.warn('OpenAI embedding failed during onboarding, using fallback embedding:', error);
-  }
-
+function createProfileEmbedding(profileText: string) {
   return new Array(1536).fill(0).map((_, index) => {
     const charCode = profileText.charCodeAt(index % Math.max(profileText.length, 1)) || 0;
     return ((charCode + index) % 2000) / 1000 - 1;
@@ -120,7 +107,7 @@ export async function POST(req: Request) {
     const profileText = isCollegeAdmin
       ? `Name: ${name}. Role: ${normalizedRole}. College: ${college}.${bio ? ` Organizer note: ${bio}.` : ''}`
       : `Name: ${name}. Role: ${normalizedRole}. College: ${college}. Domain: ${normalizedDomain}. Skills: ${normalizedSkills.join(', ')}.${bio ? ` Bio: ${bio}.` : ''}${mentorCompany ? ` Currently at: ${mentorCompany}.` : ''} Graduation year: ${parsedGraduationYear ?? 'N/A'}.`;
-    const embedding = await createProfileEmbedding(profileText);
+    const embedding = createProfileEmbedding(profileText);
     const embeddingVector = JSON.stringify(embedding);
 
     let users = await prisma.$queryRaw`

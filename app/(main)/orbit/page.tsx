@@ -77,7 +77,7 @@ export default async function OrbitPage() {
       <div className="space-y-4">
         {posts.length > 0 ? (
           posts.map((post) => (
-            <PostCard key={post.id} post={post as any} />
+            <PostCard key={post.id} post={post as any} currentUserId={currentUser.id} />
           ))
         ) : (
           <EmptyState 

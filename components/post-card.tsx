@@ -1,7 +1,11 @@
+'use client';
+
 import { Badge } from './ui/badge';
 import Image from 'next/image';
+import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
 import { PostEngagementBar } from '@/components/feed/PostEngagementBar';
+import { PostActionsSimple } from './post-actions-simple';
 import type { Post, Visibility } from '@prisma/client';
 
 type FeedPostShape = Omit<
@@ -12,7 +16,7 @@ type FeedPostShape = Omit<
   visibility?: Visibility;
   updatedAt?: Date;
 
-  author: { name: string; college: string; avatarUrl: string | null };
+  author: { id: string; name: string; college: string; avatarUrl: string | null };
   _count?: {
     likes: number;
     comments: number;
@@ -35,21 +39,42 @@ type FeedPostShape = Omit<
 
 interface PostCardProps {
   post: FeedPostShape;
+  currentUserId?: string;
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, currentUserId }: PostCardProps) {
+  const isAuthor = post.authorId === currentUserId;
+
+  const handleEdit = () => {
+    // TODO: Open edit modal/modal
+    console.log('Edit post:', post.id);
+  };
+
+  const handleDelete = () => {
+    // This will be handled by PostActions component
+    window.location.reload();
+  };
+
+  const handleReport = () => {
+    // TODO: Open report modal
+    console.log('Report post:', post.id);
+  };
   return (
     <article className="rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-border/80">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <Link 
+          href={`/profile/${post.author.id}`}
+          className="flex items-center gap-3 group hover:opacity-80 transition-opacity"
+          aria-label={`View ${post.author.name}'s profile`}
+        >
           <div className="h-10 w-10 rounded-full bg-gradient-to-br from-sky-500 to-teal-600 flex items-center justify-center text-white font-semibold">
             {post.author.name.charAt(0)}
           </div>
           <div>
-            <p className="font-semibold text-foreground">{post.author.name}</p>
+            <p className="font-semibold text-foreground group-hover:text-sky-600 transition-colors">{post.author.name}</p>
             <p className="text-sm text-muted-foreground">{post.author.college}</p>
           </div>
-        </div>
+        </Link>
         <span className="text-sm text-muted-foreground">{formatDate(post.createdAt)}</span>
       </div>
       
@@ -60,14 +85,16 @@ export function PostCard({ post }: PostCardProps) {
         {post.imageUrls && post.imageUrls.length > 0 && (
           <div className="grid grid-cols-2 gap-2">
             {post.imageUrls.map((url, index) => (
-              <Image
-                key={index}
-                src={url}
-                alt={`Post image ${index + 1}`}
-                width={400}
-                height={192}
-                className="w-full h-32 object-cover rounded-lg"
-              />
+              <div key={index} className="relative w-full h-32 rounded-lg overflow-hidden bg-slate-100">
+                <Image
+                  src={url}
+                  alt={`Post image ${index + 1}`}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                  loading="lazy"
+                />
+              </div>
             ))}
           </div>
         )}
@@ -103,6 +130,7 @@ export function PostCard({ post }: PostCardProps) {
         </Badge>
       </div>
 
+      <div className="flex items-center justify-between mt-4">
       {/* Engagement bar */}
       <PostEngagementBar
         postId={post.id}
@@ -112,6 +140,16 @@ export function PostCard({ post }: PostCardProps) {
         isLiked={post.isLiked || false}
         isBookmarked={post.isBookmarked || false}
       />
+      
+      {/* Post actions */}
+      <PostActionsSimple
+        postId={post.id}
+        isAuthor={isAuthor}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onReport={handleReport}
+      />
+    </div>
     </article>
   );
 }

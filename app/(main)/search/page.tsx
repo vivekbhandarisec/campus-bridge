@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Search, Filter, Users, GraduationCap, Briefcase, Building2, CalendarDays } from 'lucide-react';
-import { ProfileCard } from '@/components/profile-card';
+import { SearchProfileCard } from '@/components/search-profile-card';
 import { EventCard } from '@/components/event-card';
 import { skillsOptions } from '@/lib/profile-options';
 
@@ -293,11 +293,11 @@ export default function SearchPage() {
                 <Users className="h-4 w-4 text-sky-500" />
                 <h2 className="font-semibold text-foreground">People</h2>
               </div>
-              {users.map((user) => (
-                <Link key={user.id} href={`/profile/${user.id}`} className="block rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-sky-500/40">
-                  <ProfileCard user={user} />
-                </Link>
-              ))}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                {users.map((user) => (
+                  <SearchProfileCard key={user.id} user={user} />
+                ))}
+              </div>
             </section>
           ) : null}
 
