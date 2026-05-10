@@ -17,14 +17,29 @@ export async function awardCampusCred(userId: string, points: number, reason: st
 }
 
 export async function awardCampusCredOnce(userId: string, points: number, reason: string) {
-  const existing = await prisma.credEvent.findFirst({
-    where: { userId, reason },
-    select: { id: true },
-  });
-  if (existing) return false;
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${userId}:${reason}`}))`;
 
-  await awardCampusCred(userId, points, reason);
-  return true;
+    const existing = await tx.credEvent.findFirst({
+      where: { userId, reason },
+      select: { id: true },
+    });
+    if (existing) return false;
+
+    await tx.credEvent.create({
+      data: {
+        userId,
+        points,
+        reason,
+      },
+    });
+    await tx.user.update({
+      where: { id: userId },
+      data: { campusCred: { increment: points } },
+    });
+
+    return true;
+  });
 }
 
 export async function awardBadge({

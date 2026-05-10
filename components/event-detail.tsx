@@ -21,6 +21,7 @@ interface EventDetailProps {
     type: string;
     startDate: string;
     endDate: string | null;
+    organizerId: string | null;
     prize: string | null;
     teamSize: string | null;
     tags: string[];
@@ -30,29 +31,59 @@ interface EventDetailProps {
   };
   initialRegistered: boolean;
   initialLookingForTeam: boolean;
+  currentUserId: string;
   participants: Participant[];
 }
 
-export function EventDetail({ event, initialRegistered, initialLookingForTeam, participants }: EventDetailProps) {
+export function EventDetail({ event, initialRegistered, initialLookingForTeam, currentUserId, participants }: EventDetailProps) {
   const router = useRouter();
   const [registered, setRegistered] = useState(initialRegistered);
   const [lookingForTeam, setLookingForTeam] = useState(initialLookingForTeam);
+  const [pending, setPending] = useState(false);
   const [message, setMessage] = useState('');
+  const isOrganizer = event.organizerId === currentUserId;
 
   const submit = async () => {
+    if (pending) return;
     setMessage('');
-    const response = await fetch(`/api/events/${event.id}/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lookingForTeam }),
-    });
-    if (!response.ok) {
-      setMessage('Action failed.');
-      return;
+    setPending(true);
+    try {
+      const response = await fetch(`/api/events/${event.id}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lookingForTeam }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setMessage(data.message || 'Action failed.');
+        return;
+      }
+      setRegistered(true);
+      setMessage('Registration updated.');
+      router.refresh();
+    } finally {
+      setPending(false);
     }
-    setRegistered(true);
-    setMessage('Registration updated.');
-    router.refresh();
+  };
+
+  const unregister = async () => {
+    if (pending) return;
+    setPending(true);
+    setMessage('');
+    try {
+      const response = await fetch(`/api/events/${event.id}/register`, { method: 'DELETE' });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setMessage(data.message || 'Could not dismiss registration.');
+        return;
+      }
+      setRegistered(false);
+      setLookingForTeam(false);
+      setMessage('Registration dismissed.');
+      router.refresh();
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -92,7 +123,12 @@ export function EventDetail({ event, initialRegistered, initialLookingForTeam, p
 
         <div className="mt-6 space-y-4">
           <div className="flex items-center gap-4">
-            <Button onClick={submit}>{registered ? 'Update registration' : 'Register'}</Button>
+            <Button onClick={submit} disabled={pending || isOrganizer}>{pending ? 'Saving...' : registered ? 'Update registration' : 'Register'}</Button>
+            {registered ? (
+              <Button onClick={unregister} disabled={pending} className="border border-slate-200 bg-white text-slate-700 shadow-none hover:bg-slate-50 hover:shadow-none">
+                Dismiss registration
+              </Button>
+            ) : null}
             {event.type === 'HACKATHON' ? (
               <label className="inline-flex items-center gap-3 rounded-[10px] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
                 <input type="checkbox" checked={lookingForTeam} onChange={() => setLookingForTeam((value) => !value)} />

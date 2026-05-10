@@ -37,8 +37,9 @@ export default async function EventDetailPage({ params }: { params: { id: string
         description: event.description,
         type: event.type,
         startDate: event.startDate.toISOString(),
-        endDate: event.endDate?.toISOString() ?? null,
-        prize: event.prize,
+      endDate: event.endDate?.toISOString() ?? null,
+      organizerId: event.organizerId,
+      prize: event.prize,
         teamSize: event.teamSize,
         tags: event.tags,
         link: event.link,
@@ -47,6 +48,7 @@ export default async function EventDetailPage({ params }: { params: { id: string
       }}
       initialRegistered={Boolean(registration)}
       initialLookingForTeam={registration?.lookingForTeam ?? false}
+      currentUserId={user.id}
       participants={participants}
     />
   );

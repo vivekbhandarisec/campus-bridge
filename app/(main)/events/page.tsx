@@ -50,7 +50,15 @@ async function getEvents(userId: string, filters?: {
   const events = await prisma.event.findMany({
     where: whereClause,
     orderBy: [{ createdAt: 'desc' }, { startDate: 'asc' }],
-    include: { college: true },
+    include: {
+      college: true,
+      registrations: {
+        where: { userId: user?.id ?? '' },
+        select: { id: true, lookingForTeam: true },
+        take: 1,
+      },
+      _count: { select: { registrations: true } },
+    },
   });
   
   return { user, events };
@@ -77,5 +85,5 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
 
   const canOrganize = user.capabilities.some((item) => item.capability === 'ORGANIZER' || item.capability === 'ADMIN');
 
-  return <EventsBoard events={events} canOrganize={canOrganize} filters={searchParams} />;
+  return <EventsBoard events={events} canOrganize={canOrganize} currentUserId={user.id} filters={searchParams} />;
 }

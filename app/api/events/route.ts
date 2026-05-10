@@ -20,7 +20,10 @@ export async function GET(req: Request) {
 
   const events = await prisma.event.findMany({
     where: eventType ? { type: eventType } : undefined,
-    include: { college: { select: { name: true } } },
+    include: {
+      college: { select: { name: true } },
+      _count: { select: { registrations: true } },
+    },
     orderBy: [{ createdAt: 'desc' }, { startDate: 'asc' }],
   });
 

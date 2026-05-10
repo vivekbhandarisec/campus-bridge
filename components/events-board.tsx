@@ -11,8 +11,13 @@ import { Textarea } from './ui/textarea';
 import type { Event } from '@prisma/client';
 
 interface EventsBoardProps {
-  events: Array<Event & { college: { name: string } }>;
+  events: Array<Event & {
+    college: { name: string };
+    registrations?: Array<{ id: string; lookingForTeam: boolean }>;
+    _count?: { registrations: number };
+  }>;
   canOrganize: boolean;
+  currentUserId: string;
   filters?: {
     type?: string;
     college?: string;
@@ -22,13 +27,50 @@ interface EventsBoardProps {
   };
 }
 
-export function EventsBoard({ events, canOrganize, filters }: EventsBoardProps) {
+type EventFormData = {
+  title: string;
+  description: string;
+  type: string;
+  collegeId: string;
+  prize: string;
+  teamSize: string;
+  tags: string;
+  startDate: string;
+  registrationDeadline: string;
+  link: string;
+};
+
+const emptyEventForm: EventFormData = {
+  title: '',
+  description: '',
+  type: 'HACKATHON',
+  collegeId: '',
+  prize: '',
+  teamSize: '1-3',
+  tags: 'Product,Build',
+  startDate: '',
+  registrationDeadline: '',
+  link: '',
+};
+
+function toLocalDateTimeInput(value: Date | string | null | undefined) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60 * 1000);
+  return local.toISOString().slice(0, 16);
+}
+
+export function EventsBoard({ events, canOrganize, currentUserId, filters }: EventsBoardProps) {
   const router = useRouter();
   const [typeFilter, setTypeFilter] = useState(filters?.type || 'ALL');
   const [statusFilter, setStatusFilter] = useState('UPCOMING');
   const [tagFilter, setTagFilter] = useState('ALL');
   const [showCreate, setShowCreate] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [pendingEventId, setPendingEventId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [verificationLoading, setVerificationLoading] = useState(false);
   const [verificationData, setVerificationData] = useState({
@@ -39,18 +81,7 @@ export function EventsBoard({ events, canOrganize, filters }: EventsBoardProps) 
     reason: '',
     contactLink: '',
   });
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    type: 'HACKATHON',
-    collegeId: '',
-    prize: '',
-    teamSize: '1-3',
-    tags: 'Product,Build',
-    startDate: '',
-    registrationDeadline: '',
-    link: '',
-  });
+  const [formData, setFormData] = useState<EventFormData>(emptyEventForm);
 
   const tagOptions = useMemo(() => {
     const tags = new Set<string>();
@@ -72,26 +103,52 @@ export function EventsBoard({ events, canOrganize, filters }: EventsBoardProps) 
   }, [events, typeFilter, statusFilter, tagFilter]);
 
   const register = async (eventId: string, type: string) => {
+    if (pendingEventId) return;
     setMessage('');
-    const lookingForTeam = type === 'HACKATHON';
-    const response = await fetch(`/api/events/${eventId}/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lookingForTeam }),
-    });
-    if (!response.ok) {
-      setMessage('Could not register.');
-      return;
+    setPendingEventId(eventId);
+    try {
+      const lookingForTeam = type === 'HACKATHON';
+      const response = await fetch(`/api/events/${eventId}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lookingForTeam }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setMessage(data.message || 'Could not register.');
+        return;
+      }
+      setMessage('Registration updated.');
+      router.refresh();
+    } finally {
+      setPendingEventId(null);
     }
-    setMessage('Registration updated.');
-    router.refresh();
+  };
+
+  const unregister = async (eventId: string) => {
+    if (pendingEventId) return;
+    setMessage('');
+    setPendingEventId(eventId);
+    try {
+      const response = await fetch(`/api/events/${eventId}/register`, { method: 'DELETE' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setMessage(data.message || 'Could not dismiss registration.');
+        return;
+      }
+      setMessage('Registration dismissed.');
+      router.refresh();
+    } finally {
+      setPendingEventId(null);
+    }
   };
 
   const createEvent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage('');
-    const response = await fetch('/api/events', {
-      method: 'POST',
+    const endpoint = editingEventId ? `/api/events/${editingEventId}` : '/api/events';
+    const response = await fetch(endpoint, {
+      method: editingEventId ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: formData.title,
@@ -106,12 +163,53 @@ export function EventsBoard({ events, canOrganize, filters }: EventsBoardProps) 
       }),
     });
     if (!response.ok) {
-      setMessage('Unable to post event.');
+      const data = await response.json().catch(() => ({}));
+      setMessage(data.message || 'Unable to save event.');
       return;
     }
-    setMessage('Event created.');
+    setMessage(editingEventId ? 'Event updated.' : 'Event created.');
     setShowCreate(false);
+    setEditingEventId(null);
+    setFormData(emptyEventForm);
     router.refresh();
+  };
+
+  const startEdit = (event: EventsBoardProps['events'][number]) => {
+    setMessage('');
+    setShowVerification(false);
+    setShowCreate(true);
+    setEditingEventId(event.id);
+    setFormData({
+      title: event.title,
+      description: event.description,
+      type: event.type,
+      collegeId: event.collegeId,
+      prize: event.prize ?? '',
+      teamSize: event.teamSize ?? '',
+      tags: event.tags.join(','),
+      startDate: toLocalDateTimeInput(event.startDate),
+      registrationDeadline: toLocalDateTimeInput(event.registrationDeadline),
+      link: event.link ?? '',
+    });
+  };
+
+  const deleteEvent = async (eventId: string) => {
+    const confirmed = window.confirm('Delete this event? Registrations will be removed and this cannot be undone.');
+    if (!confirmed) return;
+    setMessage('');
+    setPendingEventId(eventId);
+    try {
+      const response = await fetch(`/api/events/${eventId}`, { method: 'DELETE' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setMessage(data.message || 'Could not delete event.');
+        return;
+      }
+      setMessage('Event deleted.');
+      router.refresh();
+    } finally {
+      setPendingEventId(null);
+    }
   };
 
   const submitVerification = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -145,6 +243,8 @@ export function EventsBoard({ events, canOrganize, filters }: EventsBoardProps) 
     setMessage('');
     if (canOrganize) {
       setShowCreate((value) => !value);
+      setEditingEventId(null);
+      setFormData(emptyEventForm);
       setShowVerification(false);
       return;
     }
@@ -244,7 +344,24 @@ export function EventsBoard({ events, canOrganize, filters }: EventsBoardProps) 
               <Input placeholder="Tags, comma separated" value={formData.tags} onChange={(event) => setFormData({ ...formData, tags: event.target.value })} />
               <Input placeholder="Event link" value={formData.link} onChange={(event) => setFormData({ ...formData, link: event.target.value })} />
             </div>
-            <Button type="submit" className="bg-teal-600 shadow-none hover:bg-teal-600/90 hover:shadow-lift">Create event</Button>
+            <div className="flex flex-wrap gap-3">
+              <Button type="submit" className="bg-teal-600 shadow-none hover:bg-teal-600/90 hover:shadow-lift">
+                {editingEventId ? 'Save event changes' : 'Create event'}
+              </Button>
+              {editingEventId ? (
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setEditingEventId(null);
+                    setFormData(emptyEventForm);
+                    setShowCreate(false);
+                  }}
+                  className="border border-slate-200 bg-white text-slate-700 shadow-none hover:bg-slate-50 hover:shadow-none"
+                >
+                  Cancel edit
+                </Button>
+              ) : null}
+            </div>
           </form>
         )}
       </div>
@@ -278,10 +395,46 @@ export function EventsBoard({ events, canOrganize, filters }: EventsBoardProps) 
         {filtered.length > 0 ? filtered.map((event) => (
           <div key={event.id}>
             <EventCard event={event} />
-            <div className="mt-3 flex justify-end">
-              <Button type="button" onClick={() => register(event.id, event.type)}>
-                Register
-              </Button>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3">
+              <div className="text-sm text-slate-600">
+                <span className="font-semibold text-slate-900">{event._count?.registrations ?? 0}</span> registered
+                {event.registrations?.length ? <span className="ml-2 text-teal-700">You are registered</span> : null}
+              </div>
+              <div className="flex flex-wrap justify-end gap-2">
+                {event.registrations?.length ? (
+                  <Button
+                    type="button"
+                    onClick={() => unregister(event.id)}
+                    disabled={pendingEventId === event.id}
+                    className="border border-slate-200 bg-white text-slate-700 shadow-none hover:bg-slate-50 hover:shadow-none"
+                  >
+                    {pendingEventId === event.id ? 'Saving...' : 'Dismiss registration'}
+                  </Button>
+                ) : (
+                  <Button type="button" onClick={() => register(event.id, event.type)} disabled={pendingEventId === event.id || event.organizerId === currentUserId}>
+                    {pendingEventId === event.id ? 'Saving...' : 'Register'}
+                  </Button>
+                )}
+                {canOrganize && event.organizerId === currentUserId ? (
+                  <>
+                    <Button
+                      type="button"
+                      onClick={() => startEdit(event)}
+                      className="border border-sky-500/30 bg-sky-50 text-sky-600 shadow-none hover:bg-white hover:shadow-none"
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => deleteEvent(event.id)}
+                      disabled={pendingEventId === event.id}
+                      className="border border-danger-200 bg-danger-50 text-danger-600 shadow-none hover:bg-danger-50 hover:shadow-none"
+                    >
+                      Delete
+                    </Button>
+                  </>
+                ) : null}
+              </div>
             </div>
           </div>
         )) : (
