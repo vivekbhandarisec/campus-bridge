@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { formatDate } from '@/lib/utils';
+import { hasAnyCapability } from '@/lib/capabilities';
 
 export default async function CollegeAdminPage() {
   const { userId } = auth();
@@ -9,31 +10,41 @@ export default async function CollegeAdminPage() {
 
   const currentUser = await prisma.user.findUnique({
     where: { clerkId: userId },
-    select: { role: true },
+    select: {
+      college: true,
+      capabilities: { select: { capability: true } },
+    },
   });
   if (!currentUser) redirect('/onboarding');
 
-  const college = await prisma.college.findUnique({
-    where: { adminClerkId: userId },
+  if (!hasAnyCapability(currentUser, ['ORGANIZER', 'ADMIN'])) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-700">
+        You do not have organizer access.
+      </div>
+    );
+  }
+
+  const college = await prisma.college.upsert({
+    where: { name: currentUser.college },
+    update: {},
+    create: {
+      name: currentUser.college,
+      city: 'Unknown',
+      state: 'India',
+      verified: true,
+    },
     include: {
       events: { include: { registrations: true }, orderBy: { startDate: 'asc' } },
     },
   });
-
-  if (currentUser.role !== 'COLLEGE_ADMIN' || !college) {
-    return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-700">
-        You do not have college organizer access.
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-8">
       <div className="rounded-2xl border border-slate-200 bg-navy p-8 text-white shadow-soft">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">College organizer</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Organizer workspace</p>
             <h1 className="page-title text-white">{college.name} workspace</h1>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white">

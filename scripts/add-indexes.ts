@@ -22,13 +22,6 @@ async function addIndexes() {
       CREATE EXTENSION IF NOT EXISTS pg_trgm;
     `);
 
-    // Add vector index for User.embedding
-    await runIndex(client, 'user_embedding_idx', `
-      CREATE INDEX CONCURRENTLY IF NOT EXISTS user_embedding_idx
-      ON "User" USING ivfflat (embedding vector_cosine_ops)
-      WITH (lists = 100);
-    `);
-
     // Add full-text search index for search fields
     await runIndex(client, 'user_search_idx', `
       CREATE INDEX CONCURRENTLY IF NOT EXISTS user_search_idx

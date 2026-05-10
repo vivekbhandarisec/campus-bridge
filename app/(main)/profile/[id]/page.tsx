@@ -3,7 +3,8 @@ import prisma from '@/lib/prisma';
 import { CredBadge } from '@/components/cred-badge';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { formatDate, campusCredBadge } from '@/lib/utils';
+import { formatDate, campusCredBadge, cn } from '@/lib/utils';
+import { roleIdentity } from '@/lib/role-identity';
 
 export default async function ProfilePage({ params }: { params: { id: string } }) {
   const user = await prisma.user.findUnique({
@@ -45,15 +46,17 @@ export default async function ProfilePage({ params }: { params: { id: string } }
   }
 
   const tier = campusCredBadge(user.campusCred);
+  const identity = roleIdentity(user.role);
 
   return (
     <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,_1fr)]">
       <aside className="space-y-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-soft">
-          <Avatar src={user.avatarUrl} name={user.name} className="mx-auto mb-4" />
+        <div className={cn('rounded-2xl border border-l-4 border-slate-200 bg-white p-6 text-center shadow-soft', identity.border)}>
+          <Avatar src={user.avatarUrl} name={user.name} className={cn('mx-auto mb-4', identity.ring)} />
           <h1 className="page-title">{user.name}</h1>
           {user.username ? <p className="mt-2 text-sm text-slate-500">@{user.username}</p> : null}
           <p className="mt-2 text-sm text-slate-500">{user.college}</p>
+          <Badge className={cn('mt-3 uppercase tracking-wide', identity.badge)}>{identity.label}</Badge>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             {user.skills.map((skill) => (
               <Badge key={skill} className="border-slate-200 bg-slate-100 text-slate-700">{skill}</Badge>

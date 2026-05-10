@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
 import { SessionRefresh } from '@/components/session-refresh';
-import { UserProvider } from '@/contexts/UserContext';
 import { ErrorBoundary } from '@/components/error-boundary';
 import './globals.css';
 
@@ -9,7 +8,7 @@ const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 export const metadata: Metadata = {
   title: 'CampusBridge',
-  description: 'CampusBridge connects engineering students, alumni, and colleges with AI-powered mentoring and events.',
+  description: 'CampusBridge connects engineering students, alumni, and colleges with mentor matching and events.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -39,9 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ClerkProvider>
           <ErrorBoundary>
-            <UserProvider>
-              <SessionRefresh>{children}</SessionRefresh>
-            </UserProvider>
+            <SessionRefresh>{children}</SessionRefresh>
           </ErrorBoundary>
         </ClerkProvider>
       </body>

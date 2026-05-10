@@ -1,10 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
--- Add vector index for User.embedding
-CREATE INDEX CONCURRENTLY IF NOT EXISTS user_embedding_idx
-ON "User" USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 100);
-
 -- Add full-text search index for search fields
 CREATE INDEX CONCURRENTLY IF NOT EXISTS user_search_idx
 ON "User" USING gin (

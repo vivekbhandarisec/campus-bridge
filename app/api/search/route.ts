@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     const page = Number.parseInt(searchParams.get('page') ?? '1', 10);
     const limit = 20;
 
-    const roleFilter = role && ['STUDENT', 'ALUMNI', 'COLLEGE_ADMIN'].includes(role)
+    const roleFilter = role && ['STUDENT', 'ALUMNI'].includes(role)
       ? (role as Role)
       : undefined;
 

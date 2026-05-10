@@ -80,7 +80,7 @@ export default function OnboardingPage() {
 
   const nextStep = () => setStep((current) => Math.min(totalSteps, current + 1));
   const prevStep = () => setStep((current) => Math.max(1, current - 1));
-  const totalSteps = role === 'COLLEGE_ADMIN' ? 2 : role === 'ALUMNI' ? 3 : 2;
+  const totalSteps = role === 'ALUMNI' ? 3 : 2;
   const isFinalStep = step === totalSteps;
   const currentYear = new Date().getFullYear();
   const graduationYears = role === 'ALUMNI'
@@ -94,7 +94,6 @@ export default function OnboardingPage() {
       return 'Username must be 3–20 characters, start with a letter, and only include letters, numbers, or underscores.';
     }
     if (!college) return 'Choose your college.';
-    if (role === 'COLLEGE_ADMIN') return '';
     if (!domain) return 'Choose your focus area.';
     if (skills.length === 0) return 'Select at least one skill.';
     if (!branch.trim()) return 'Enter your branch.';
@@ -127,8 +126,8 @@ export default function OnboardingPage() {
           college,
           branch,
           graduationYear: graduationYear ? Number(graduationYear) : undefined,
-          domain: role === 'COLLEGE_ADMIN' ? null : domain,
-          skills: role === 'COLLEGE_ADMIN' ? [] : skills,
+          domain,
+          skills,
           bio,
           currentCompany: role === 'ALUMNI' ? currentCompany : undefined,
           isAvailable: role === 'ALUMNI' ? isAvailable : true,
@@ -195,7 +194,7 @@ export default function OnboardingPage() {
                     </div>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <p className="text-sm text-slate-700">{role === 'STUDENT' ? 'Build your student profile to find mentors, join campus events, and climb the CampusCred leaderboard.' : role === 'ALUMNI' ? 'Set up your alumni profile to mentor students, share opportunities, and showcase your career journey.' : 'Claim your college organizer workspace to publish hackathons, programs, and campus opportunities for your institution.'}</p>
+                    <p className="text-sm text-slate-700">{role === 'STUDENT' ? 'Build your student profile to find mentors, join campus events, and climb the CampusCred leaderboard.' : 'Set up your alumni profile to mentor students, share opportunities, and showcase your career journey.'}</p>
                   </div>
                   <div className="space-y-4">
                     <div>
@@ -229,51 +228,47 @@ export default function OnboardingPage() {
                       ))}
                     </Select>
                   </div>
-                  {role !== 'COLLEGE_ADMIN' && (
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="mb-2 block text-[13px] font-semibold text-slate-700">Branch</label>
-                        <Input value={branch} onChange={(event) => setBranch(event.target.value)} required />
-                      </div>
-                      <div>
-                        <label className="mb-2 block text-[13px] font-semibold text-slate-700">Graduation year</label>
-                        <Select value={graduationYear} onChange={(event) => setGraduationYear(event.target.value)}>
-                          <option value="">Choose year</option>
-                          {graduationYears.map((year) => (
-                            <option key={year} value={year}>{year}</option>
-                          ))}
-                        </Select>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-[13px] font-semibold text-slate-700">Branch</label>
+                      <Input value={branch} onChange={(event) => setBranch(event.target.value)} required />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-[13px] font-semibold text-slate-700">Graduation year</label>
+                      <Select value={graduationYear} onChange={(event) => setGraduationYear(event.target.value)}>
+                        <option value="">Choose year</option>
+                        {graduationYears.map((year) => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-[13px] font-semibold text-slate-700">Domain</label>
+                      <Select value={domain} onChange={(event) => setDomain(event.target.value)} required>
+                        <option value="">Choose your focus area</option>
+                        {domains.map((item) => (
+                          <option key={item} value={item}>{item}</option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-[13px] font-semibold text-slate-700">Skills</label>
+                      <div className="flex flex-wrap gap-2">
+                        {skillsOptions.map((skill) => (
+                          <button
+                            key={skill}
+                            type="button"
+                            onClick={() => toggleSkill(skill)}
+                            className={`rounded-full border px-3 py-2 text-[12.5px] font-semibold transition ${skills.includes(skill) ? 'border-sky-500 bg-sky-50 text-sky-500' : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-white'}`}
+                          >
+                            {skill}
+                          </button>
+                        ))}
                       </div>
                     </div>
-                  )}
-                  {role !== 'COLLEGE_ADMIN' && (
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="mb-2 block text-[13px] font-semibold text-slate-700">Domain</label>
-                        <Select value={domain} onChange={(event) => setDomain(event.target.value)} required>
-                          <option value="">Choose your focus area</option>
-                          {domains.map((item) => (
-                            <option key={item} value={item}>{item}</option>
-                          ))}
-                        </Select>
-                      </div>
-                      <div>
-                        <label className="mb-2 block text-[13px] font-semibold text-slate-700">Skills</label>
-                        <div className="flex flex-wrap gap-2">
-                          {skillsOptions.map((skill) => (
-                            <button
-                              key={skill}
-                              type="button"
-                              onClick={() => toggleSkill(skill)}
-                              className={`rounded-full border px-3 py-2 text-[12.5px] font-semibold transition ${skills.includes(skill) ? 'border-sky-500 bg-sky-50 text-sky-500' : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-white'}`}
-                            >
-                              {skill}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </div>
               )}
 

@@ -27,5 +27,26 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }),
   ]);
 
-  return NextResponse.json({ voted: true });
+  const poll = await prisma.poll.findUnique({
+    where: { postId: params.id },
+    include: {
+      options: {
+        include: {
+          _count: { select: { votes: true } },
+          votes: { where: { userId: currentUser.id }, select: { id: true }, take: 1 },
+        },
+      },
+    },
+  });
+
+  return NextResponse.json({
+    voted: true,
+    selectedOptionId: option.id,
+    options: poll?.options.map((item) => ({
+      id: item.id,
+      text: item.text,
+      votes: item._count.votes,
+      selected: item.votes.length > 0,
+    })) ?? [],
+  });
 }

@@ -5,12 +5,21 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
-// Add connection pool configuration to prevent timeouts
-const connectionString = process.env.DATABASE_URL 
-  ? process.env.DATABASE_URL.includes('connection_limit') 
-    ? process.env.DATABASE_URL 
-    : `${process.env.DATABASE_URL}?connection_limit=10&pool_timeout=20`
-  : undefined;
+function withPoolOptions(databaseUrl: string | undefined) {
+  if (!databaseUrl) return undefined;
+
+  const url = new URL(databaseUrl);
+  if (!url.searchParams.has('connection_limit')) {
+    url.searchParams.set('connection_limit', '10');
+  }
+  if (!url.searchParams.has('pool_timeout')) {
+    url.searchParams.set('pool_timeout', '20');
+  }
+
+  return url.toString();
+}
+
+const connectionString = withPoolOptions(process.env.DATABASE_URL);
 
 const prisma = connectionString
   ? global.prisma || new PrismaClient({

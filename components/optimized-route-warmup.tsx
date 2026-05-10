@@ -4,31 +4,33 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Role } from '@prisma/client';
 
-// Only prefetch critical routes that users are most likely to visit
-const criticalRoutes = ['/feed', '/events'];
+const criticalRoutes = ['/feed', '/events', '/search', '/messages', '/leaderboard'];
 
 const roleSpecificRoutes = {
   STUDENT: ['/match'],
   ALUMNI: ['/dashboard'],
-  COLLEGE_ADMIN: ['/admin/college'],
 };
 
 export function OptimizedRouteWarmup({ role }: { role: Role | null }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Delay prefetching to not block initial page load
-    const warmup = window.setTimeout(() => {
-      // Prefetch critical routes first
-      criticalRoutes.forEach((route) => router.prefetch(route));
+    const routes = [
+      ...criticalRoutes,
+      ...(role ? roleSpecificRoutes[role] ?? [] : []),
+    ];
+    const prefetchRoutes = () => {
+      routes.forEach((route) => router.prefetch(route));
+    };
 
-      // Prefetch role-specific routes
-      if (role && roleSpecificRoutes[role]) {
-        roleSpecificRoutes[role].forEach((route) => router.prefetch(route));
-      }
-    }, 1000); // Increased delay to prioritize initial page load
+    if ('requestIdleCallback' in window) {
+      const idleId = window.requestIdleCallback(prefetchRoutes, { timeout: 2500 });
+      return () => window.cancelIdleCallback(idleId);
+    }
 
-    return () => window.clearTimeout(warmup);
+    const warmup = setTimeout(prefetchRoutes, 1200);
+
+    return () => clearTimeout(warmup);
   }, [role, router]);
 
   return null;

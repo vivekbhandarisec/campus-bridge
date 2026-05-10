@@ -18,7 +18,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/EmptyState';
 import { CampusCredProgress } from '@/components/campus-cred-progress';
-import { useUser } from '@/contexts/UserContext';
 
 interface DashboardData {
   user: {
@@ -50,7 +49,6 @@ interface DashboardData {
     currentCompany: string | null;
     avatarUrl: string | null;
     campusCred: number;
-    matchScore: number;
   }>;
   mentorshipRequests?: Array<{
     id: string;
@@ -65,17 +63,10 @@ interface DashboardData {
 }
 
 export default function OptimizedDashboard() {
-  const { user, loading: userLoading } = useUser();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (userLoading) return;
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
     const controller = new AbortController();
     setLoading(true);
     fetch('/api/dashboard', { cache: 'no-store', signal: controller.signal })
@@ -92,7 +83,7 @@ export default function OptimizedDashboard() {
         });
 
     return () => controller.abort();
-  }, [user, userLoading]);
+  }, []);
 
   if (loading) {
     return (

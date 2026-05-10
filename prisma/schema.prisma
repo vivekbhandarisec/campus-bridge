@@ -29,11 +29,14 @@ model User {
   avatarUrl          String?
   campusCred         Int                    @default(0)
   isAvailable        Boolean                @default(true)
-  embedding          Unsupported("vector")?
   posts              Post[]
   sentMessages       Message[]              @relation("SentMessages")
   receivedMessages   Message[]              @relation("ReceivedMessages")
   eventRegistrations EventRegistration[]
+  organizedEvents    Event[]
+  capabilities       UserCapability[]
+  organizerVerification OrganizerVerification?
+  badges             AchievementBadge[]
   credEvents         CredEvent[]
   likes              Like[]
   comments           Comment[]
@@ -58,7 +61,6 @@ model College {
   city         String
   state        String
   verified     Boolean @default(false)
-  adminClerkId String? @unique
   events       Event[]
 }
 
@@ -78,6 +80,9 @@ model Event {
   link                 String?
   createdAt            DateTime            @default(now())
   registrations        EventRegistration[]
+  badges               AchievementBadge[]
+  organizer            User?               @relation(fields: [organizerId], references: [id])
+  organizerId          String?
 }
 
 model EventRegistration {
@@ -90,6 +95,54 @@ model EventRegistration {
   createdAt      DateTime @default(now())
 
   @@unique([userId, eventId])
+}
+
+model UserCapability {
+  id         String     @id @default(cuid())
+  user       User       @relation(fields: [userId], references: [id])
+  userId     String
+  capability Capability
+  assignedAt DateTime   @default(now())
+  assignedBy String?
+
+  @@unique([userId, capability])
+  @@index([capability])
+}
+
+model OrganizerVerification {
+  id              String   @id @default(cuid())
+  user            User     @relation(fields: [userId], references: [id])
+  userId          String   @unique
+  fullName        String
+  collegeEmail    String?
+  organization    String
+  roleTitle       String
+  reason          String
+  contactLink     String?
+  status          String   @default("APPROVED")
+  reviewedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model AchievementBadge {
+  id          String    @id @default(cuid())
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+  event       Event?    @relation(fields: [eventId], references: [id])
+  eventId     String?
+  key         String
+  label       String
+  description String?
+  kind        BadgeKind
+  awardedAt   DateTime  @default(now())
+
+  @@index([userId, key])
+  @@index([eventId])
+  @@index([kind])
 }
 
 model Post {
@@ -247,7 +300,21 @@ model MentorRelation {
 enum Role {
   STUDENT
   ALUMNI
-  COLLEGE_ADMIN
+}
+
+enum Capability {
+  ORGANIZER
+  MENTOR
+  RECRUITER
+  MODERATOR
+  ADMIN
+}
+
+enum BadgeKind {
+  ACHIEVEMENT
+  PARTICIPATION
+  ORGANIZER
+  PROGRAM
 }
 
 enum Visibility {

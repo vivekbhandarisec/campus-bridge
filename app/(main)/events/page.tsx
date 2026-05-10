@@ -12,7 +12,10 @@ async function getEvents(userId: string, filters?: {
   search?: string;
 }) {
   noStore();
-  const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+  const user = await prisma.user.findUnique({
+    where: { clerkId: userId },
+    include: { capabilities: { select: { capability: true } } },
+  });
   
   const whereClause: any = {};
   
@@ -72,5 +75,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   const { user, events } = await getEvents(userId, searchParams);
   if (!user) redirect('/onboarding');
 
-  return <EventsBoard events={events} currentRole={user.role} filters={searchParams} />;
+  const canOrganize = user.capabilities.some((item) => item.capability === 'ORGANIZER' || item.capability === 'ADMIN');
+
+  return <EventsBoard events={events} canOrganize={canOrganize} filters={searchParams} />;
 }

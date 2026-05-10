@@ -1,7 +1,14 @@
 export const roles = [
   { value: 'STUDENT', label: 'Student', description: 'Find mentors and opportunities' },
   { value: 'ALUMNI', label: 'Alumni', description: 'Offer mentorship and career advice' },
-  { value: 'COLLEGE_ADMIN', label: 'College Organizer', description: 'Publish events and programs' },
+] as const;
+
+export const capabilities = [
+  { value: 'ORGANIZER', label: 'Organizer', description: 'Host and manage events' },
+  { value: 'MENTOR', label: 'Mentor', description: 'Guide students through matching' },
+  { value: 'RECRUITER', label: 'Recruiter', description: 'Share opportunities and hiring programs' },
+  { value: 'MODERATOR', label: 'Moderator', description: 'Help keep the community healthy' },
+  { value: 'ADMIN', label: 'Admin', description: 'Platform team operations' },
 ] as const;
 
 export const domains = [
@@ -15,7 +22,6 @@ export const domains = [
   'cybersecurity',
   'ethical-hacking',
   'ctf',
-  'ai',
   'ml',
   'data-science',
   'data-engineering',
@@ -129,3 +135,4 @@ export const colleges = [
 ] as const;
 
 export type CampusRole = (typeof roles)[number]['value'];
+export type CampusCapability = (typeof capabilities)[number]['value'];

@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { awardCampusCred } from '@/lib/cred';
+import { awardCampusCred, awardEventRegistrationBadges } from '@/lib/cred';
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const { userId } = auth();
@@ -17,7 +17,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ message: 'User not found' }, { status: 404 });
   }
 
-  const event = await prisma.event.findUnique({ where: { id: params.id } });
+  const event = await prisma.event.findUnique({
+    where: { id: params.id },
+    select: { id: true, title: true, type: true },
+  });
   if (!event) {
     return NextResponse.json({ message: 'Event not found' }, { status: 404 });
   }
@@ -33,6 +36,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
       data: { lookingForTeam },
     });
+    await awardEventRegistrationBadges(currentUser.id, event);
     return NextResponse.json({ message: 'Registration updated', registration: updated });
   }
 
@@ -45,5 +49,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   });
 
   await awardCampusCred(currentUser.id, 5, 'registered_event');
+  await awardEventRegistrationBadges(currentUser.id, event);
   return NextResponse.json({ message: 'Registered' });
 }

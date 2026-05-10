@@ -14,7 +14,7 @@ async function getSummary() {
     const [students, alumni, organizers, events] = await Promise.all([
       prisma.user.count({ where: { role: 'STUDENT' } }),
       prisma.user.count({ where: { role: 'ALUMNI' } }),
-      prisma.user.count({ where: { role: 'COLLEGE_ADMIN' } }),
+      prisma.userCapability.count({ where: { capability: 'ORGANIZER' } }),
       prisma.event.count(),
     ]);
     return { students, alumni, organizers, events };
@@ -57,7 +57,7 @@ export default async function HomePage() {
       <main className="mx-auto max-w-[1280px] px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         <section className="grid items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
-            <Badge className="border-sky-500/20 bg-sky-50 text-sky-500">AI campus network for engineering colleges</Badge>
+            <Badge className="border-sky-500/20 bg-sky-50 text-sky-500">Match campus network for engineering colleges</Badge>
             <h1 className="mt-6 max-w-3xl font-heading text-[42px] font-extrabold leading-[1.08] tracking-[-0.035em] text-navy sm:text-[48px]">
               Mentorship, events, and peer discovery in one campus workspace.
             </h1>
@@ -107,7 +107,7 @@ export default async function HomePage() {
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-[17px] font-semibold text-navy">AI mentor match</p>
+                      <p className="text-[17px] font-semibold text-navy">Mentor match</p>
                       <p className="mt-1 text-sm text-slate-600">Priya Sharma · Security Engineer</p>
                     </div>
                     <span className="rounded-full border border-teal-600/20 bg-teal-50 px-3 py-1 text-[12px] font-semibold text-teal-600">Available</span>
@@ -148,7 +148,7 @@ export default async function HomePage() {
 
         <section className="mt-16 grid gap-5 lg:grid-cols-3">
           {[
-            { label: 'Students', icon: Sparkles, title: 'Discover mentors and opportunities', copy: 'AI matching, event discovery, team finder, and community posts built around your profile.' },
+            { label: 'Students', icon: Sparkles, title: 'Discover mentors and opportunities', copy: 'Match recommendations, event discovery, team finder, and community posts built around your profile.' },
             { label: 'Alumni', icon: Users, title: 'Mentor without friction', copy: 'Stay available, message students, share opportunities, and build a visible CampusCred reputation.' },
             { label: 'Colleges', icon: CalendarDays, title: 'Run campus activity in one place', copy: 'Publish verified events, manage registration signals, and understand team-seeker demand.' },
           ].map((item) => {

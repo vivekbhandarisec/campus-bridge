@@ -15,9 +15,7 @@ export function RouteWarmup({ role }: { role: Role | null }) {
         ? ['/match']
         : role === 'ALUMNI'
           ? ['/dashboard']
-          : role === 'COLLEGE_ADMIN'
-            ? ['/admin/college']
-            : [];
+          : [];
 
     const warmup = window.setTimeout(() => {
       [...commonRoutes, ...roleRoutes].forEach((route) => router.prefetch(route));

@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { MessageCircle, User, ExternalLink } from 'lucide-react';
 import { Avatar } from './ui/avatar';
 import { Badge } from './ui/badge';
-import { campusCredBadge } from '@/lib/utils';
+import { campusCredBadge, cn } from '@/lib/utils';
+import { roleIdentity } from '@/lib/role-identity';
 
 interface SearchProfileCardProps {
   user: {
@@ -22,16 +23,17 @@ interface SearchProfileCardProps {
 export function SearchProfileCard({ user }: SearchProfileCardProps) {
   const tier = campusCredBadge(user.campusCred);
   const roleLabel = user.role ? user.role.replace('_', ' ').toLowerCase() : null;
+  const identity = roleIdentity(user.role);
 
   return (
-    <div className="app-card overflow-hidden">
-      <div className="h-16 bg-gradient-to-r from-navy via-sky-500 to-teal-600" />
+    <div className={cn('app-card overflow-hidden border-l-4', identity.border)}>
+      <div className={cn('h-16 bg-gradient-to-r', user.role === 'ALUMNI' ? 'from-violet-700 via-fuchsia-500 to-slate-900' : 'from-sky-600 via-cyan-500 to-teal-600')} />
       <div className="-mt-8 p-4 pt-0">
         <div className="flex items-start justify-between gap-3">
-          <Avatar src={user.avatarUrl} name={user.name} className="h-14 w-14 shrink-0 border-4 border-white shadow-soft" />
+          <Avatar src={user.avatarUrl} name={user.name} className={cn('h-14 w-14 shrink-0 border-4 border-white shadow-soft', identity.ring)} />
           <div className="flex gap-2 mt-6">
             <Link
-              href={`/messages/${user.id}`}
+              href={`/messages?user=${user.id}`}
               className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] border border-slate-200 bg-white text-slate-600 shadow-soft transition hover:border-sky-500/30 hover:text-sky-500"
               aria-label={`Send message to ${user.name}`}
               title="Send message"
@@ -57,7 +59,7 @@ export function SearchProfileCard({ user }: SearchProfileCardProps) {
           <p className="mt-1 break-words text-sm font-medium text-slate-600">{user.college}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {roleLabel ? (
-              <Badge className="border-sky-500/20 bg-sky-50 text-sky-700">{roleLabel}</Badge>
+              <Badge className={cn('uppercase tracking-wide', identity.badge)}>{roleLabel}</Badge>
             ) : null}
             {user.domain ? (
               <Badge className="border-teal-600/20 bg-teal-50 text-teal-700">{user.domain}</Badge>

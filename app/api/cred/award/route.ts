@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { hasAnyCapability } from '@/lib/capabilities';
 
 export async function POST(req: Request) {
   const { userId: clerkId } = auth();
@@ -15,10 +16,13 @@ export async function POST(req: Request) {
 
   const currentUser = await prisma.user.findUnique({
     where: { clerkId },
-    select: { id: true, role: true },
+    select: {
+      id: true,
+      capabilities: { select: { capability: true } },
+    },
   });
 
-  if (!currentUser || (currentUser.id !== userId && currentUser.role !== 'COLLEGE_ADMIN')) {
+  if (!currentUser || (currentUser.id !== userId && !hasAnyCapability(currentUser, ['MODERATOR', 'ADMIN']))) {
     return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
   }
 

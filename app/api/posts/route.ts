@@ -46,11 +46,14 @@ const getPosts = unstable_cache(
         linkUrl: true,
         author: {
           select: {
+            id: true,
             name: true,
             college: true,
             avatarUrl: true,
+            role: true,
           },
         },
+        poll: { include: { options: { include: { _count: { select: { votes: true } } } } } },
         _count: { select: { likes: true, comments: true, shares: true, bookmarks: true } },
       },
     });
@@ -146,7 +149,6 @@ export async function POST(req: Request) {
     files = Array.from(formData.values()).filter(
       (value): value is File => value instanceof File && value.type.startsWith('image/'),
     );
-    if (files.length > 0) imageUrls = await uploadPostImages(files, currentUser.id);
   } else {
     const payload = await req.json();
     body = String(payload.body ?? '').trim();
@@ -169,6 +171,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: 'Link posts need a URL' }, { status: 400 });
   }
   if (type === 'IMAGE' && imageUrls.length === 0) {
+    if (files.length === 0) {
+      return NextResponse.json({ message: 'Image posts need at least one image' }, { status: 400 });
+    }
+    try {
+      imageUrls = await uploadPostImages(files, currentUser.id);
+    } catch (uploadError) {
+      console.error('Image upload failed:', uploadError);
+      return NextResponse.json({ message: 'Image upload failed' }, { status: 500 });
+    }
+  }
+  if (type === 'IMAGE' && imageUrls.length === 0) {
     return NextResponse.json({ message: 'Image posts need at least one image' }, { status: 400 });
   }
 
@@ -178,7 +191,7 @@ export async function POST(req: Request) {
       body,
       type,
       visibility,
-      imageUrls: type === 'IMAGE' ? [] : imageUrls, // Will update after upload
+      imageUrls: type === 'IMAGE' ? imageUrls : [],
       linkUrl,
       poll: type === 'POLL'
         ? { create: { options: { create: pollOptions.slice(0, 4).map((text) => ({ text })) } } }
@@ -187,30 +200,17 @@ export async function POST(req: Request) {
     include: {
       author: {
         select: {
+          id: true,
           name: true,
           college: true,
           avatarUrl: true,
+          role: true,
         },
       },
       poll: { include: { options: { include: { _count: { select: { votes: true } } } } } },
       _count: { select: { likes: true, comments: true, shares: true, bookmarks: true } },
     },
   });
-
-  // Upload images asynchronously if present
-  if (type === 'IMAGE' && files.length > 0) {
-    try {
-      const uploadedUrls = await uploadPostImages(files, currentUser.id);
-      await prisma.post.update({
-        where: { id: post.id },
-        data: { imageUrls: uploadedUrls },
-      });
-      post.imageUrls = uploadedUrls;
-    } catch (uploadError) {
-      console.error('Image upload failed:', uploadError);
-      // Post is created, but without images - could notify user or retry
-    }
-  }
 
   await awardCampusCred(currentUser.id, 5, 'created_post');
   return NextResponse.json(post);

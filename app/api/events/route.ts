@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import type { EventType } from '@prisma/client';
 import prisma from '@/lib/prisma';
+import { hasAnyCapability } from '@/lib/capabilities';
+import { awardEventOrganizerBadge } from '@/lib/cred';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,14 +33,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const currentUser = await prisma.user.findUnique({ where: { clerkId: userId } });
-  if (!currentUser || currentUser.role !== 'COLLEGE_ADMIN') {
+  const currentUser = await prisma.user.findUnique({
+    where: { clerkId: userId },
+    include: { capabilities: { select: { capability: true } } },
+  });
+  if (!currentUser || !hasAnyCapability(currentUser, ['ORGANIZER', 'ADMIN'])) {
     return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-  }
-
-  const college = await prisma.college.findUnique({ where: { adminClerkId: userId } });
-  if (!college) {
-    return NextResponse.json({ message: 'College not found' }, { status: 404 });
   }
 
   const body = await req.json();
@@ -47,12 +47,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
   }
 
+  const college = await prisma.college.upsert({
+    where: { name: currentUser.college },
+    update: {},
+    create: {
+      name: currentUser.college,
+      city: 'Unknown',
+      state: 'India',
+      verified: true,
+    },
+  });
+
   const event = await prisma.event.create({
     data: {
       title,
       description,
       type,
       collegeId: college.id,
+      organizerId: currentUser.id,
       startDate: new Date(startDate),
       registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : null,
       prize,
@@ -62,6 +74,7 @@ export async function POST(req: Request) {
     },
     include: { college: { select: { name: true } } },
   });
+  await awardEventOrganizerBadge(currentUser.id, event);
 
   revalidatePath('/events');
   revalidatePath('/feed');

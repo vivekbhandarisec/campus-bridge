@@ -1,5 +1,8 @@
+'use client';
+
 import * as React from 'react';
 import Image from 'next/image';
+import { User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -8,6 +11,7 @@ interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(({ src, name, className, ...props }, ref) => {
+  const [imageFailed, setImageFailed] = React.useState(false);
   const initials = name
     ? name
         .split(' ')
@@ -16,6 +20,11 @@ const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(({ src, name, class
         .join('')
         .slice(0, 2)
     : 'CB';
+  const showImage = Boolean(src && !imageFailed);
+
+  React.useEffect(() => {
+    setImageFailed(false);
+  }, [src]);
 
   return (
     <div
@@ -23,16 +32,21 @@ const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(({ src, name, class
       className={cn('inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-teal-600 text-sm font-semibold text-white', className)}
       {...props}
     >
-      {src ? (
+      {showImage ? (
         <Image
-          src={src}
+          src={src as string}
           alt={name || 'Profile avatar'}
           width={96}
           height={96}
           unoptimized
           className="h-full w-full rounded-full object-cover"
+          onError={() => setImageFailed(true)}
         />
-      ) : initials}
+      ) : (
+        <span className="grid h-full w-full place-items-center rounded-full bg-gradient-to-br from-sky-500 via-cyan-500 to-teal-600 text-white">
+          {initials ? <span>{initials}</span> : <User className="h-1/2 w-1/2" aria-hidden="true" />}
+        </span>
+      )}
     </div>
   );
 });

@@ -1,13 +1,17 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
-import { Heart, MessageCircle, Share2, Bookmark, Send } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Send, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { roleIdentity } from '@/lib/role-identity';
 
 type CommentItem = {
   id: string;
   body: string;
   createdAt: string;
   author: {
+    id: string;
     name: string;
     avatarUrl: string | null;
     role: string;
@@ -21,6 +25,8 @@ interface PostEngagementBarProps {
   shareCount: number;
   isLiked: boolean;
   isBookmarked: boolean;
+  currentUserId?: string;
+  postOwnerId?: string;
 }
 
 export function PostEngagementBar({
@@ -29,7 +35,9 @@ export function PostEngagementBar({
   commentCount,
   shareCount,
   isLiked,
-  isBookmarked
+  isBookmarked,
+  currentUserId,
+  postOwnerId,
 }: PostEngagementBarProps) {
   const [liked, setLiked] = useState(isLiked);
   const [likes, setLikes] = useState(likeCount);
@@ -127,6 +135,22 @@ export function PostEngagementBar({
     setCommentsLoaded(true);
   };
 
+  const handleDeleteComment = async (commentId: string) => {
+    const previous = comments;
+    setComments((items) => items.filter((item) => item.id !== commentId));
+    setCommentTotal((count) => Math.max(0, count - 1));
+    setError('');
+
+    try {
+      const response = await fetch(`/api/posts/comments/${commentId}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Could not delete comment');
+    } catch (err) {
+      setComments(previous);
+      setCommentTotal((count) => count + 1);
+      setError((err as Error).message);
+    }
+  };
+
   return (
     <div className="min-w-0 flex-1">
       <div className="flex flex-wrap items-center gap-1">
@@ -196,15 +220,36 @@ export function PostEngagementBar({
           </form>
           {error ? <p className="text-sm text-danger-600">{error}</p> : null}
           <div className="space-y-2">
-            {comments.length > 0 ? comments.map((comment) => (
-              <div key={comment.id} className="min-w-0 rounded-lg border border-border bg-white p-3">
+            {comments.length > 0 ? comments.map((comment) => {
+              const identity = roleIdentity(comment.author.role);
+              const canDelete = comment.author.id === currentUserId || postOwnerId === currentUserId;
+
+              return (
+              <div key={comment.id} className={cn('min-w-0 rounded-lg border border-l-4 bg-white p-3', identity.border)}>
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                  <p className="min-w-0 break-words text-sm font-semibold text-foreground [overflow-wrap:anywhere]">{comment.author.name}</p>
-                  <span className="shrink-0 text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleDateString('en-IN')}</span>
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <p className="min-w-0 break-words text-sm font-semibold text-foreground [overflow-wrap:anywhere]">{comment.author.name}</p>
+                    <Badge className={cn('text-[10px] uppercase tracking-wide', identity.badge)}>{identity.label}</Badge>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleDateString('en-IN')}</span>
+                    {canDelete ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteComment(comment.id)}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                        aria-label="Delete comment"
+                        title={comment.author.id === currentUserId ? 'Delete your comment' : 'Moderate comment'}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
                 <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-foreground [overflow-wrap:anywhere]">{comment.body}</p>
               </div>
-            )) : (
+              );
+            }) : (
               <p className="py-2 text-sm text-muted-foreground">No comments yet.</p>
             )}
           </div>

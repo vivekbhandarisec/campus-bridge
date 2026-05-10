@@ -9,10 +9,22 @@ export async function DELETE(_req: Request, { params }: { params: { cid: string 
   const currentUser = await prisma.user.findUnique({ where: { clerkId: userId }, select: { id: true } });
   if (!currentUser) return NextResponse.json({ message: 'User not found' }, { status: 404 });
 
-  const deleted = await prisma.comment.deleteMany({
-    where: { id: params.cid, authorId: currentUser.id },
+  const comment = await prisma.comment.findUnique({
+    where: { id: params.cid },
+    select: {
+      id: true,
+      authorId: true,
+      post: { select: { authorId: true } },
+    },
   });
 
-  if (deleted.count === 0) return NextResponse.json({ message: 'Comment not found' }, { status: 404 });
+  if (!comment) return NextResponse.json({ message: 'Comment not found' }, { status: 404 });
+  const canDelete = comment.authorId === currentUser.id || comment.post.authorId === currentUser.id;
+  if (!canDelete) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+
+  await prisma.$transaction([
+    prisma.comment.deleteMany({ where: { parentId: params.cid } }),
+    prisma.comment.delete({ where: { id: params.cid } }),
+  ]);
   return NextResponse.json({ success: true });
 }

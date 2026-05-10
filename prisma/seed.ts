@@ -1,27 +1,9 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
-import OpenAI from 'openai';
 
 const prisma = new PrismaClient();
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
-
-async function createEmbedding(profile: string) {
-  try {
-    const response = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: profile,
-    });
-    return response.data[0].embedding;
-  } catch (error: any) {
-    console.warn('OpenAI API failed, using dummy embedding:', error.message);
-    // Return a dummy 1536-dimensional vector (text-embedding-3-small dimension)
-    return new Array(1536).fill(0).map(() => Math.random() * 2 - 1);
-  }
-}
 
 async function main() {
-  // OpenAI API key is optional now - will use dummy embeddings if failed
-
   const colleges = [
     { name: 'IIT Delhi', city: 'Delhi', state: 'Delhi', verified: true },
     { name: 'VIT Vellore', city: 'Vellore', state: 'Tamil Nadu', verified: true },
@@ -161,7 +143,7 @@ async function main() {
       registrationDeadline: new Date('2025-09-15T23:59:59Z'),
       prize: '₹50,000',
       teamSize: '1-3',
-      tags: ['Fullstack', 'Product', 'AI'],
+      tags: ['Fullstack', 'Product', 'Build'],
       link: 'https://campusbridge.io/buildfast',
       collegeId: iitCollege.id,
     },
@@ -175,7 +157,7 @@ async function main() {
       registrationDeadline: new Date('2025-09-15T23:59:59Z'),
       prize: '₹50,000',
       teamSize: '1-3',
-      tags: ['Fullstack', 'Product', 'AI'],
+      tags: ['Fullstack', 'Product', 'Build'],
       link: 'https://campusbridge.io/buildfast',
     },
   });

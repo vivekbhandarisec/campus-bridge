@@ -1,52 +1,7 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-
-function createProfileEmbedding(profileText: string) {
-  return new Array(1536).fill(0).map((_, index) => {
-    const charCode = profileText.charCodeAt(index % Math.max(profileText.length, 1)) || 0;
-    return ((charCode + index) % 2000) / 1000 - 1;
-  });
-}
-
-function collegeLocation(name: string) {
-  if (name === 'GBPIET Pauri') {
-    return { city: 'Pauri Garhwal', state: 'Uttarakhand' };
-  }
-
-  if (name === 'Other') {
-    return { city: 'Unknown', state: 'Unknown' };
-  }
-
-  const city = name.split(' ').slice(-1)[0] || 'Unknown';
-  return { city, state: 'India' };
-}
-
-async function syncCollegeAdmin(collegeName: string, userId: string, role: string) {
-  if (role !== 'COLLEGE_ADMIN') {
-    await prisma.college.updateMany({
-      where: { adminClerkId: userId },
-      data: { adminClerkId: null },
-    });
-    return;
-  }
-
-  const location = collegeLocation(collegeName);
-  await prisma.college.upsert({
-    where: { name: collegeName },
-    update: {
-      adminClerkId: userId,
-      verified: true,
-      ...location,
-    },
-    create: {
-      name: collegeName,
-      adminClerkId: userId,
-      verified: true,
-      ...location,
-    },
-  });
-}
+import { syncIdentityCapabilities } from '@/lib/capabilities';
 
 export async function PUT(req: Request) {
   try {
@@ -57,16 +12,15 @@ export async function PUT(req: Request) {
 
     const body = await req.json();
     const { role, college, branch, graduationYear, domain, skills, bio, currentCompany, isAvailable } = body;
-    const normalizedRole = ['STUDENT', 'ALUMNI', 'COLLEGE_ADMIN'].includes(role) ? role : '';
-    const isCollegeAdmin = normalizedRole === 'COLLEGE_ADMIN';
-    const normalizedDomain = isCollegeAdmin ? null : domain;
-    const normalizedSkills = isCollegeAdmin ? [] : skills;
+    const normalizedRole = ['STUDENT', 'ALUMNI'].includes(role) ? role : '';
+    const normalizedDomain = domain;
+    const normalizedSkills = skills;
 
     if (!normalizedRole || !college) {
       return NextResponse.json({ message: 'Role and college are required' }, { status: 400 });
     }
 
-    if (!isCollegeAdmin && (!normalizedDomain || !Array.isArray(normalizedSkills) || normalizedSkills.length === 0)) {
+    if (!normalizedDomain || !Array.isArray(normalizedSkills) || normalizedSkills.length === 0) {
       return NextResponse.json({ message: 'Domain and skills are required for student and alumni profiles' }, { status: 400 });
     }
 
@@ -80,45 +34,32 @@ export async function PUT(req: Request) {
     const parsedGraduationYear = Number.isFinite(Number(graduationYear)) ? Number(graduationYear) : null;
     const currentYear = new Date().getFullYear();
 
-    if (!isCollegeAdmin) {
-      if (!parsedGraduationYear) {
-        return NextResponse.json({ message: 'Graduation year is required' }, { status: 400 });
-      }
-      if (normalizedRole === 'ALUMNI' && parsedGraduationYear > currentYear) {
-        return NextResponse.json({ message: 'Alumni graduation year must be this year or earlier' }, { status: 400 });
-      }
-      if (normalizedRole === 'STUDENT' && parsedGraduationYear <= currentYear) {
-        return NextResponse.json({ message: 'Student graduation year must be after the current year' }, { status: 400 });
-      }
+    if (!parsedGraduationYear) {
+      return NextResponse.json({ message: 'Graduation year is required' }, { status: 400 });
+    }
+    if (normalizedRole === 'ALUMNI' && parsedGraduationYear > currentYear) {
+      return NextResponse.json({ message: 'Alumni graduation year must be this year or earlier' }, { status: 400 });
+    }
+    if (normalizedRole === 'STUDENT' && parsedGraduationYear <= currentYear) {
+      return NextResponse.json({ message: 'Student graduation year must be after the current year' }, { status: 400 });
     }
 
-    const profileText = isCollegeAdmin
-      ? `Name: ${existingUser.name}. Role: ${normalizedRole}. College: ${college}.${bio ? ` Organizer note: ${bio}.` : ''}`
-      : `Name: ${existingUser.name}. Role: ${normalizedRole}. College: ${college}. Domain: ${normalizedDomain}. Skills: ${normalizedSkills.join(', ')}.${bio ? ` Bio: ${bio}.` : ''}${mentorCompany ? ` Currently at: ${mentorCompany}.` : ''} Graduation year: ${parsedGraduationYear ?? 'N/A'}.`;
-    const embeddingVector = JSON.stringify(createProfileEmbedding(profileText));
+    const user = await prisma.user.update({
+      where: { clerkId: userId },
+      data: {
+        role: normalizedRole,
+        college,
+        branch: branch || null,
+        graduationYear: parsedGraduationYear,
+        domain: normalizedDomain,
+        skills: normalizedSkills,
+        bio: bio || null,
+        currentCompany: mentorCompany,
+        isAvailable: availableForMentorship,
+      },
+    });
 
-    const users = await prisma.$queryRaw`
-      UPDATE "User"
-      SET
-        role = ${normalizedRole}::"Role",
-        college = ${college},
-        branch = ${branch || null},
-        "graduationYear" = ${parsedGraduationYear},
-        domain = ${normalizedDomain},
-        skills = ${normalizedSkills},
-        bio = ${bio || null},
-        "currentCompany" = ${mentorCompany},
-        "isAvailable" = ${availableForMentorship},
-        embedding = ${embeddingVector}::vector
-      WHERE "clerkId" = ${userId}
-      RETURNING id, "clerkId", email, name, role, college, branch, "graduationYear",
-        bio, skills, domain, "currentCompany", "avatarUrl", "campusCred",
-        "isAvailable"
-    `;
-
-    await syncCollegeAdmin(college, userId, normalizedRole);
-
-    const user = Array.isArray(users) ? users[0] : users;
+    await syncIdentityCapabilities(user.id, user.role, availableForMentorship);
     return NextResponse.json({ ...user, profileComplete: true });
   } catch (error) {
     console.error('Profile update failed:', error);
@@ -135,13 +76,114 @@ export async function DELETE() {
 
     const user = await prisma.user.findUnique({ where: { clerkId: userId } });
     if (user) {
-      await prisma.$transaction([
-        prisma.message.deleteMany({ where: { OR: [{ senderId: user.id }, { receiverId: user.id }] } }),
-        prisma.eventRegistration.deleteMany({ where: { userId: user.id } }),
-        prisma.credEvent.deleteMany({ where: { userId: user.id } }),
-        prisma.post.deleteMany({ where: { authorId: user.id } }),
-        prisma.user.delete({ where: { id: user.id } }),
-      ]);
+      await prisma.$transaction(async (tx) => {
+        const authoredPosts = await tx.post.findMany({
+          where: { authorId: user.id },
+          select: { id: true },
+        });
+        const authoredPostIds = authoredPosts.map((post) => post.id);
+
+        const commentLayers: string[][] = [];
+        const initialComments = await tx.comment.findMany({
+          where: {
+            OR: [
+              { authorId: user.id },
+              ...(authoredPostIds.length > 0 ? [{ postId: { in: authoredPostIds } }] : []),
+            ],
+          },
+          select: { id: true },
+        });
+        let frontier = initialComments.map((comment) => comment.id);
+        const seenCommentIds = new Set(frontier);
+        if (frontier.length > 0) commentLayers.push(frontier);
+
+        while (frontier.length > 0) {
+          const replies = await tx.comment.findMany({
+            where: { parentId: { in: frontier } },
+            select: { id: true },
+          });
+          frontier = replies.map((reply) => reply.id).filter((id) => !seenCommentIds.has(id));
+          frontier.forEach((id) => seenCommentIds.add(id));
+          if (frontier.length > 0) commentLayers.push(frontier);
+        }
+
+        const affectedCommentIds = Array.from(seenCommentIds);
+        const polls = authoredPostIds.length > 0
+          ? await tx.poll.findMany({
+              where: { postId: { in: authoredPostIds } },
+              select: { id: true, options: { select: { id: true } } },
+            })
+          : [];
+        const pollIds = polls.map((poll) => poll.id);
+        const pollOptionIds = polls.flatMap((poll) => poll.options.map((option) => option.id));
+
+        await tx.report.deleteMany({
+          where: {
+            OR: [
+              { reporterId: user.id },
+              { itemType: 'USER', itemId: user.id },
+              ...(authoredPostIds.length > 0 ? [{ itemType: 'POST' as const, itemId: { in: authoredPostIds } }] : []),
+              ...(affectedCommentIds.length > 0 ? [{ itemType: 'COMMENT' as const, itemId: { in: affectedCommentIds } }] : []),
+            ],
+          },
+        });
+
+        await tx.message.deleteMany({ where: { OR: [{ senderId: user.id }, { receiverId: user.id }] } });
+        await tx.mentorRelation.deleteMany({ where: { OR: [{ mentorId: user.id }, { menteeId: user.id }] } });
+        await tx.orbit.deleteMany({ where: { OR: [{ fromUserId: user.id }, { toUserId: user.id }] } });
+        await tx.eventRegistration.deleteMany({ where: { userId: user.id } });
+        await tx.userCapability.deleteMany({ where: { userId: user.id } });
+        await tx.organizerVerification.deleteMany({ where: { userId: user.id } });
+        await tx.achievementBadge.deleteMany({ where: { userId: user.id } });
+        await tx.event.updateMany({ where: { organizerId: user.id }, data: { organizerId: null } });
+        await tx.credEvent.deleteMany({ where: { userId: user.id } });
+
+        await tx.pollVote.deleteMany({ where: { userId: user.id } });
+        if (pollOptionIds.length > 0) {
+          await tx.pollVote.deleteMany({ where: { optionId: { in: pollOptionIds } } });
+        }
+
+        await tx.like.deleteMany({
+          where: {
+            OR: [
+              { userId: user.id },
+              ...(authoredPostIds.length > 0 ? [{ postId: { in: authoredPostIds } }] : []),
+            ],
+          },
+        });
+        await tx.share.deleteMany({
+          where: {
+            OR: [
+              { userId: user.id },
+              ...(authoredPostIds.length > 0 ? [{ postId: { in: authoredPostIds } }] : []),
+            ],
+          },
+        });
+        await tx.bookmark.deleteMany({
+          where: {
+            OR: [
+              { userId: user.id },
+              ...(authoredPostIds.length > 0 ? [{ postId: { in: authoredPostIds } }] : []),
+            ],
+          },
+        });
+
+        for (const layer of [...commentLayers].reverse()) {
+          await tx.comment.deleteMany({ where: { id: { in: layer } } });
+        }
+
+        if (pollOptionIds.length > 0) {
+          await tx.pollOption.deleteMany({ where: { id: { in: pollOptionIds } } });
+        }
+        if (pollIds.length > 0) {
+          await tx.poll.deleteMany({ where: { id: { in: pollIds } } });
+        }
+        if (authoredPostIds.length > 0) {
+          await tx.post.deleteMany({ where: { id: { in: authoredPostIds } } });
+        }
+
+        await tx.user.delete({ where: { id: user.id } });
+      });
     }
 
     await clerkClient.users.deleteUser(userId);

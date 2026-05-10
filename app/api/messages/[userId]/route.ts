@@ -60,15 +60,19 @@ export async function POST(req: Request, { params }: { params: { userId: string 
   }
 
   const { content } = await req.json();
-  if (!content) {
+  const trimmedContent = String(content ?? '').trim();
+  if (!trimmedContent) {
     return NextResponse.json({ message: 'Missing message content' }, { status: 400 });
+  }
+  if (trimmedContent.length > 2000) {
+    return NextResponse.json({ message: 'Message is too long' }, { status: 400 });
   }
 
   const message = await prisma.message.create({
     data: {
       senderId: currentUser.id,
       receiverId: other.id,
-      content,
+      content: trimmedContent,
     },
   });
 

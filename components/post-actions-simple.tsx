@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MoreHorizontal, Edit, Trash2, Flag } from 'lucide-react';
+import { Edit, Trash2, Flag } from 'lucide-react';
 import { Button } from './ui/button';
 import { ReportModal } from './report-modal';
 

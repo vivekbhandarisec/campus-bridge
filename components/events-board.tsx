@@ -8,11 +8,11 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select } from './ui/select';
 import { Textarea } from './ui/textarea';
-import type { Event, Role } from '@prisma/client';
+import type { Event } from '@prisma/client';
 
 interface EventsBoardProps {
   events: Array<Event & { college: { name: string } }>;
-  currentRole: Role;
+  canOrganize: boolean;
   filters?: {
     type?: string;
     college?: string;
@@ -22,13 +22,23 @@ interface EventsBoardProps {
   };
 }
 
-export function EventsBoard({ events, currentRole, filters }: EventsBoardProps) {
+export function EventsBoard({ events, canOrganize, filters }: EventsBoardProps) {
   const router = useRouter();
   const [typeFilter, setTypeFilter] = useState(filters?.type || 'ALL');
   const [statusFilter, setStatusFilter] = useState('UPCOMING');
   const [tagFilter, setTagFilter] = useState('ALL');
   const [showCreate, setShowCreate] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
   const [message, setMessage] = useState('');
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [verificationData, setVerificationData] = useState({
+    fullName: '',
+    collegeEmail: '',
+    organization: '',
+    roleTitle: '',
+    reason: '',
+    contactLink: '',
+  });
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -36,7 +46,7 @@ export function EventsBoard({ events, currentRole, filters }: EventsBoardProps) 
     collegeId: '',
     prize: '',
     teamSize: '1-3',
-    tags: 'AI,Product',
+    tags: 'Product,Build',
     startDate: '',
     registrationDeadline: '',
     link: '',
@@ -104,6 +114,45 @@ export function EventsBoard({ events, currentRole, filters }: EventsBoardProps) 
     router.refresh();
   };
 
+  const submitVerification = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setMessage('');
+    setVerificationLoading(true);
+
+    try {
+      const response = await fetch('/api/organizer/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(verificationData),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setMessage(data.message || 'Could not verify organizer details.');
+        return;
+      }
+
+      setMessage('Organizer verification complete. You can host events now.');
+      setShowVerification(false);
+      setShowCreate(true);
+      router.refresh();
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
+  const handleHostEvent = () => {
+    setMessage('');
+    if (canOrganize) {
+      setShowCreate((value) => !value);
+      setShowVerification(false);
+      return;
+    }
+
+    setShowVerification((value) => !value);
+    setShowCreate(false);
+  };
+
   return (
     <div className="space-y-6">
       <div className="app-card p-6">
@@ -113,12 +162,64 @@ export function EventsBoard({ events, currentRole, filters }: EventsBoardProps) 
             <h1 className="page-title mt-2">Events board</h1>
             <p className="mt-2 text-sm text-slate-500">Browse hackathons, CTFs, internships and workshops in your campus network.</p>
           </div>
-          {currentRole === 'COLLEGE_ADMIN' && (
-            <Button type="button" onClick={() => setShowCreate((value) => !value)} className="bg-teal-600 shadow-none hover:bg-teal-600/90 hover:shadow-lift">
-              {showCreate ? 'Hide form' : '+ Post Event'}
-            </Button>
-          )}
+          <Button type="button" onClick={handleHostEvent} className="bg-teal-600 shadow-none hover:bg-teal-600/90 hover:shadow-lift">
+            {canOrganize ? (showCreate ? 'Hide form' : 'Host Event') : (showVerification ? 'Hide verification' : 'Host Event')}
+          </Button>
         </div>
+        {!canOrganize && showVerification && (
+          <form onSubmit={submitVerification} className="mt-6 space-y-4 rounded-2xl border border-sky-500/20 bg-sky-50 p-5">
+            <div>
+              <h2 className="section-title">Verify organizer access</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Students and alumni can host events after a short trust check. Use authentic college, club, community, or professional details.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                placeholder="Full name"
+                value={verificationData.fullName}
+                onChange={(event) => setVerificationData({ ...verificationData, fullName: event.target.value })}
+                required
+              />
+              <Input
+                type="email"
+                placeholder="College or organization email (optional)"
+                value={verificationData.collegeEmail}
+                onChange={(event) => setVerificationData({ ...verificationData, collegeEmail: event.target.value })}
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                placeholder="Club, community, college, or organization"
+                value={verificationData.organization}
+                onChange={(event) => setVerificationData({ ...verificationData, organization: event.target.value })}
+                required
+              />
+              <Input
+                placeholder="Your role/title"
+                value={verificationData.roleTitle}
+                onChange={(event) => setVerificationData({ ...verificationData, roleTitle: event.target.value })}
+                required
+              />
+            </div>
+            <Textarea
+              placeholder="What kind of event do you want to host, and how are you connected to it?"
+              value={verificationData.reason}
+              onChange={(event) => setVerificationData({ ...verificationData, reason: event.target.value })}
+              rows={4}
+              required
+            />
+            <Input
+              type="url"
+              placeholder="Proof or contact link (optional)"
+              value={verificationData.contactLink}
+              onChange={(event) => setVerificationData({ ...verificationData, contactLink: event.target.value })}
+            />
+            <Button type="submit" disabled={verificationLoading} className="bg-teal-600 shadow-none hover:bg-teal-600/90 hover:shadow-lift">
+              {verificationLoading ? 'Verifying...' : 'Verify and unlock hosting'}
+            </Button>
+          </form>
+        )}
         {showCreate && (
           <form onSubmit={createEvent} className="mt-6 space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
             <div className="grid gap-4 sm:grid-cols-2">

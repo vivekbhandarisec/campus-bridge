@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useDebounce } from '@/hooks/useDebounce';
-import { Search, Filter, Users, GraduationCap, Briefcase, Building2, CalendarDays } from 'lucide-react';
+import { Search, Filter, Users, GraduationCap, Briefcase, CalendarDays } from 'lucide-react';
 import { SearchProfileCard } from '@/components/search-profile-card';
 import { EventCard } from '@/components/event-card';
 import { skillsOptions } from '@/lib/profile-options';
@@ -175,7 +175,6 @@ export default function SearchPage() {
                   { value: '', label: 'All people', icon: Users },
                   { value: 'ALUMNI', label: 'Alumni', icon: Briefcase },
                   { value: 'STUDENT', label: 'Students', icon: GraduationCap },
-                  { value: 'COLLEGE_ADMIN', label: 'College Organizers', icon: Building2 },
                 ].map((option) => {
                   const Icon = option.icon;
                   return (

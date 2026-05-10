@@ -105,7 +105,8 @@ export async function GET() {
           .map((mentor) => ({ ...mentor, matchScore: scoreMentorMatch(user, mentor) }))
           .filter((mentor) => isSuitableMatch(mentor.matchScore))
           .sort((a, b) => b.matchScore - a.matchScore || b.campusCred - a.campusCred || a.name.localeCompare(b.name))
-          .slice(0, 5),
+          .slice(0, 5)
+          .map(({ matchScore, ...mentor }) => mentor),
       };
     } else if (user.role === 'ALUMNI') {
       // Simplified mentorship requests for alumni

@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import type { Role } from '@prisma/client';
+import type { Capability, Role } from '@prisma/client';
 
 interface UserData {
   id: string;
@@ -11,6 +11,7 @@ interface UserData {
   college: string | null;
   campusCred: number;
   isAvailable: boolean;
+  capabilities: Array<{ capability: Capability }>;
 }
 
 interface UserContextType {

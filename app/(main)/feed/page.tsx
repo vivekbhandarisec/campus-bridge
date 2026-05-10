@@ -30,6 +30,12 @@ async function getData(userId: string) {
       bio: true,
       avatarUrl: true,
       campusCred: true,
+      capabilities: { select: { capability: true } },
+      badges: {
+        orderBy: { awardedAt: 'desc' },
+        take: 4,
+        select: { key: true, label: true, kind: true },
+      },
     },
   });
 
@@ -53,8 +59,17 @@ async function getData(userId: string) {
         createdAt: true,
         imageUrls: true,
         linkUrl: true,
-        author: { select: { id: true, name: true, college: true, avatarUrl: true } },
-        poll: { include: { options: { include: { _count: { select: { votes: true } } } } } },
+        author: { select: { id: true, name: true, college: true, avatarUrl: true, role: true } },
+        poll: {
+          include: {
+            options: {
+              include: {
+                _count: { select: { votes: true } },
+                votes: { where: { user: { clerkId: userId } }, select: { id: true }, take: 1 },
+              },
+            },
+          },
+        },
         _count: { select: { likes: true, comments: true, shares: true, bookmarks: true } },
         likes: { where: { user: { clerkId: userId } }, select: { id: true }, take: 1 },
         bookmarks: { where: { user: { clerkId: userId } }, select: { id: true }, take: 1 },
@@ -109,6 +124,7 @@ async function getData(userId: string) {
             .filter((mentor) => isSuitableMatch(mentor.matchScore))
             .sort((a, b) => b.matchScore - a.matchScore || b.campusCred - a.campusCred || a.name.localeCompare(b.name))
             .slice(0, 3)
+            .map(({ matchScore, ...mentor }) => mentor)
         : [],
   };
 }

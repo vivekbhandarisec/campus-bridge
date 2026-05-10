@@ -29,6 +29,12 @@ export async function GET() {
       avatarUrl: true,
       campusCred: true,
       isAvailable: true,
+      capabilities: { select: { capability: true } },
+      badges: {
+        orderBy: { awardedAt: 'desc' },
+        take: 8,
+        select: { key: true, label: true, kind: true, awardedAt: true },
+      },
     },
   });
 
