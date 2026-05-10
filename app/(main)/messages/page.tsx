@@ -14,11 +14,12 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
 
   const currentUser = await prisma.user.findUnique({
     where: { clerkId: userId },
-    select: { id: true },
+    select: { id: true, name: true, college: true, avatarUrl: true, role: true },
   });
   if (!currentUser) redirect('/onboarding');
 
-  const conversations = await prisma.message.findMany({
+  const [conversations, incomingRequests, outgoingRequests] = await Promise.all([
+    prisma.message.findMany({
     where: {
       OR: [{ senderId: currentUser.id }, { receiverId: currentUser.id }],
     },
@@ -28,9 +29,22 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
       receiver: { select: { id: true, name: true, college: true, avatarUrl: true, role: true } },
     },
     take: 20,
-  });
+    }),
+    prisma.messageRequest.findMany({
+      where: { receiverId: currentUser.id, status: 'PENDING' },
+      orderBy: { createdAt: 'desc' },
+      include: { requester: { select: { id: true, name: true, college: true, avatarUrl: true, role: true } } },
+      take: 20,
+    }),
+    prisma.messageRequest.findMany({
+      where: { requesterId: currentUser.id, status: 'PENDING' },
+      orderBy: { createdAt: 'desc' },
+      include: { receiver: { select: { id: true, name: true, college: true, avatarUrl: true, role: true } } },
+      take: 20,
+    }),
+  ]);
 
-  const peersMap = new Map<string, { name: string; college: string; avatarUrl: string | null; role: string; lastMessage: string; updatedAt: string }>();
+  const peersMap = new Map<string, { name: string; college: string; avatarUrl: string | null; role: string; lastMessage: string; updatedAt: string; sameCollege: boolean }>();
   conversations.forEach((message) => {
     const other = message.senderId === currentUser.id ? message.receiver : message.sender;
     const existing = peersMap.get(other.id);
@@ -41,6 +55,7 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
       role: other.role,
       lastMessage: message.content,
       updatedAt: message.createdAt.toISOString(),
+      sameCollege: other.college.toLowerCase() === currentUser.college.toLowerCase(),
     };
     if (!existing || payload.updatedAt > existing.updatedAt) {
       peersMap.set(other.id, payload);
@@ -61,12 +76,25 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
         role: selectedPeer.role,
         lastMessage: 'Start a new conversation',
         updatedAt: new Date(0).toISOString(),
+        sameCollege: selectedPeer.college.toLowerCase() === currentUser.college.toLowerCase(),
       });
     }
   }
 
   const peers = Array.from(peersMap.entries()).map(([userId, data]) => ({ userId, ...data }));
-  const initialMessages = selectedUserId
+  const acceptedRequest = selectedUserId
+    ? await prisma.messageRequest.findFirst({
+        where: {
+          status: 'ACCEPTED',
+          OR: [
+            { requesterId: currentUser.id, receiverId: selectedUserId },
+            { requesterId: selectedUserId, receiverId: currentUser.id },
+          ],
+        },
+        select: { id: true },
+      })
+    : null;
+  const initialMessages = selectedUserId && acceptedRequest
     ? await prisma.message.findMany({
         where: {
           OR: [
@@ -81,7 +109,13 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
   return (
     <MessagesPanel
       peers={peers}
-      currentUserId={currentUser.id}
+      currentUser={{
+        id: currentUser.id,
+        name: currentUser.name,
+        college: currentUser.college,
+        avatarUrl: currentUser.avatarUrl,
+        role: currentUser.role,
+      }}
       currentClerkId={userId}
       initialSelectedUserId={selectedUserId ?? ''}
       initialMessages={initialMessages.map((message) => ({
@@ -91,6 +125,22 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
         content: message.content,
         createdAt: message.createdAt.toISOString(),
       }))}
+      initialRequests={{
+        incoming: incomingRequests.map((request) => ({
+          id: request.id,
+          initialMessage: request.initialMessage,
+          createdAt: request.createdAt.toISOString(),
+          user: request.requester,
+          sameCollege: request.requester.college.toLowerCase() === currentUser.college.toLowerCase(),
+        })),
+        outgoing: outgoingRequests.map((request) => ({
+          id: request.id,
+          initialMessage: request.initialMessage,
+          createdAt: request.createdAt.toISOString(),
+          user: request.receiver,
+          sameCollege: request.receiver.college.toLowerCase() === currentUser.college.toLowerCase(),
+        })),
+      }}
     />
   );
 }

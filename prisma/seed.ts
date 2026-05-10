@@ -222,17 +222,17 @@ async function main() {
     {
       authorClerkId: 'clerk-alumni-google',
       content: 'Always write documentation first, then code the API. Good design is visible in the docs.',
-      type: 'ADVICE',
+      type: 'TEXT',
     },
     {
       authorClerkId: 'clerk-alumni-flipkart',
       content: 'Want to build for scale? Start with a simple model and iterate using real user feedback.',
-      type: 'ADVICE',
+      type: 'TEXT',
     },
     {
       authorClerkId: 'clerk-alumni-razorpay',
       content: 'Fintech systems need observability from day one — logs, metrics, and alerts matter.',
-      type: 'ADVICE',
+      type: 'TEXT',
     },
   ];
 

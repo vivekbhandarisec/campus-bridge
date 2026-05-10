@@ -7,7 +7,7 @@ import { getMentorMatches } from '@/lib/mentor-matches';
 async function validateStudent(userId: string) {
   const user = await prisma.user.findUnique({
     where: { clerkId: userId },
-    select: { id: true, role: true, domain: true, skills: true, bio: true, headline: true },
+    select: { id: true, role: true, college: true, domain: true, skills: true, bio: true, headline: true },
   });
   return user;
 }

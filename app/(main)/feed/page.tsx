@@ -91,6 +91,7 @@ async function getData(userId: string) {
           where: {
             role: 'ALUMNI',
             isAvailable: true,
+            college: currentUser.college,
             ...(matchCandidateFilters.length > 0 ? { OR: matchCandidateFilters } : {}),
           },
           orderBy: [{ campusCred: 'desc' }, { name: 'asc' }],
@@ -106,6 +107,11 @@ async function getData(userId: string) {
         })
       : Promise.resolve([]),
   ]);
+
+  const postWindowStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const postsInWindow = currentUser
+    ? await prisma.post.count({ where: { authorId: currentUser.id, createdAt: { gte: postWindowStart } } })
+    : 0;
 
   return {
     currentUser,
@@ -126,6 +132,12 @@ async function getData(userId: string) {
             .slice(0, 3)
             .map(({ matchScore, ...mentor }) => mentor)
         : [],
+    postQuota: {
+      limit: 3,
+      used: postsInWindow,
+      remaining: Math.max(0, 3 - postsInWindow),
+      windowHours: 24,
+    },
   };
 }
 
@@ -133,7 +145,7 @@ export default async function FeedPage({ searchParams }: { searchParams?: { noti
   const { userId } = auth();
   if (!userId) redirect('/sign-in');
 
-  const { currentUser, posts, events, alumniMatches } = await getData(userId);
+  const { currentUser, posts, events, alumniMatches, postQuota } = await getData(userId);
   if (!currentUser) redirect('/onboarding');
   if (!isProfileComplete(currentUser)) redirect('/onboarding');
   const isStudent = currentUser.role === 'STUDENT';
@@ -160,7 +172,7 @@ export default async function FeedPage({ searchParams }: { searchParams?: { noti
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
       <main className="min-w-0 space-y-6">
-        <PostComposer />
+        <PostComposer postQuota={postQuota} />
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between gap-4">
             <div>

@@ -26,13 +26,23 @@ interface ComposerState {
   visibility: 'PUBLIC' | 'CONNECTIONS' | 'COLLEGE_ONLY';
 }
 
-export function PostComposer() {
+interface PostComposerProps {
+  postQuota?: {
+    limit: number;
+    used: number;
+    remaining: number;
+    windowHours: number;
+  };
+}
+
+export function PostComposer({ postQuota }: PostComposerProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showPollOptions, setShowPollOptions] = useState(false);
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [remainingPosts, setRemainingPosts] = useState(postQuota?.remaining ?? 3);
   
   const [composerState, setComposerState] = useState<ComposerState>({
     body: '',
@@ -101,6 +111,10 @@ export function PostComposer() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (remainingPosts <= 0) {
+      setMessage('Daily post limit reached. You can create up to 3 posts every 24 hours.');
+      return;
+    }
     if (!composerState.body.trim() && composerState.type === 'TEXT') return;
     if (composerState.type === 'POLL' && composerState.pollOptions.filter(opt => opt.trim()).length < 2) return;
     if (composerState.type === 'LINK' && !composerState.linkUrl.trim()) return;
@@ -133,7 +147,8 @@ export function PostComposer() {
         body: formData,
       });
       
-      if (!response.ok) throw new Error('Unable to post');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || 'Unable to post');
       
       // Reset form
       setComposerState({
@@ -146,10 +161,11 @@ export function PostComposer() {
       });
       setShowPollOptions(false);
       setShowLinkInput(false);
+      if (data.postQuota) setRemainingPosts(data.postQuota.remaining);
       setMessage('Post published.');
       router.refresh();
     } catch (error) {
-      setMessage('Failed to create post.');
+      setMessage((error as Error).message || 'Failed to create post.');
     } finally {
       setLoading(false);
     }
@@ -162,6 +178,12 @@ export function PostComposer() {
           U
         </div>
         <div className="min-w-0 flex-1">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Share update</p>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-600">
+              {remainingPosts} of {postQuota?.limit ?? 3} posts left today
+            </span>
+          </div>
           <Textarea
             value={composerState.body}
             onChange={(e) => setComposerState(prev => ({ ...prev, body: e.target.value }))}
@@ -316,7 +338,7 @@ export function PostComposer() {
           <button
             type="submit"
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={loading || remainingPosts <= 0}
             className="inline-flex h-9 items-center justify-center rounded-[10px] bg-sky-500 px-3 text-sm font-semibold text-white shadow-action transition hover:-translate-y-px hover:bg-sky-400 hover:shadow-actionHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
           >
             {loading ? 'Posting...' : 'Post'}

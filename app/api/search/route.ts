@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import type { Prisma, Role } from '@prisma/client';
+import { messagingEligibility } from '@/lib/messaging-policy';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,14 @@ export async function GET(req: NextRequest) {
     const { userId } = auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      select: { id: true, role: true, college: true },
+    });
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -107,7 +116,18 @@ export async function GET(req: NextRequest) {
         }),
     ]);
 
-    return NextResponse.json({ users, events });
+    return NextResponse.json({
+      users: users.map((user) => {
+        const eligibility = messagingEligibility(currentUser, user);
+        return {
+          ...user,
+          canMessage: eligibility.allowed,
+          sameCollege: Boolean(eligibility.sameCollege),
+          messageRestriction: eligibility.reason ?? null,
+        };
+      }),
+      events,
+    });
   } catch (error) {
     console.error('Search error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

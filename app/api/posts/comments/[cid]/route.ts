@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { revalidatePostViews } from '@/lib/post-cache';
 
 export async function DELETE(_req: Request, { params }: { params: { cid: string } }) {
   const { userId } = auth();
@@ -26,5 +27,6 @@ export async function DELETE(_req: Request, { params }: { params: { cid: string 
     prisma.comment.deleteMany({ where: { parentId: params.cid } }),
     prisma.comment.delete({ where: { id: params.cid } }),
   ]);
+  revalidatePostViews();
   return NextResponse.json({ success: true });
 }

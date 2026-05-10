@@ -20,6 +20,9 @@ interface SearchResult {
   campusCred: number;
   college: string;
   headline?: string;
+  canMessage?: boolean;
+  sameCollege?: boolean;
+  messageRestriction?: string | null;
   _count?: { orbitTo: number; posts: number };
 }
 

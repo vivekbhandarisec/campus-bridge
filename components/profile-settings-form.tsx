@@ -29,6 +29,8 @@ interface ProfileSettingsFormProps {
     skills: string[];
     domain: string | null;
     currentCompany: string | null;
+    portfolioUrl: string | null;
+    resumeUrl: string | null;
     isAvailable: boolean;
   };
 }
@@ -55,6 +57,8 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
   const [skills, setSkills] = useState<string[]>(user.skills || []);
   const [bio, setBio] = useState(user.bio || '');
   const [currentCompany, setCurrentCompany] = useState(user.currentCompany || '');
+  const [portfolioUrl, setPortfolioUrl] = useState(user.portfolioUrl || '');
+  const [resume, setResume] = useState<File | null>(null);
   const [isAvailable, setIsAvailable] = useState(user.isAvailable);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -128,27 +132,31 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
     setMessage('');
 
     try {
+      const formData = new FormData();
+      formData.set('role', role);
+      formData.set('college', college);
+      formData.set('branch', branch);
+      formData.set('graduationYear', graduationYear);
+      formData.set('domain', domain);
+      formData.set('skills', JSON.stringify(skills));
+      formData.set('bio', bio);
+      formData.set('currentCompany', isAlumni ? currentCompany : '');
+      formData.set('isAvailable', String(isAlumni ? isAvailable : true));
+      formData.set('portfolioUrl', portfolioUrl);
+      if (resume) formData.set('resume', resume);
+
       const response = await fetch('/api/users/profile', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role,
-          college,
-          branch,
-          graduationYear: graduationYear ? Number(graduationYear) : undefined,
-          domain,
-          skills,
-          bio,
-          currentCompany: isAlumni ? currentCompany : undefined,
-          isAvailable: isAlumni ? isAvailable : true,
-        }),
+        body: formData,
       });
 
       if (!response.ok) {
         throw new Error(await readErrorMessage(response));
       }
 
-      setMessage('Profile updated.');
+      const data = await response.json().catch(() => ({}));
+      setResume(null);
+      setMessage(data.awardedPoints ? `Profile updated. +${data.awardedPoints} CampusCred awarded.` : 'Profile updated.');
       router.refresh();
     } catch (error) {
       setError((error as Error).message);
@@ -291,6 +299,38 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
           <div>
             <label className="mb-2 block text-[13px] font-semibold text-slate-700">{roleMeta.bioLabel}</label>
             <Textarea value={bio} onChange={(event) => setBio(event.target.value)} rows={4} placeholder={roleMeta.bioPlaceholder} />
+          </div>
+
+          <div>
+            <h2 className="section-title">Career links</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Optional, but helpful for mentors, recruiters, and profile credibility. Adding a resume or portfolio for the first time awards CampusCred.
+            </p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-[13px] font-semibold text-slate-700">Portfolio link</label>
+                <Input value={portfolioUrl} onChange={(event) => setPortfolioUrl(event.target.value)} placeholder="https://your-portfolio.dev" />
+              </div>
+              <div>
+                <label className="mb-2 block text-[13px] font-semibold text-slate-700">Resume upload</label>
+                <Input
+                  type="file"
+                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={(event) => setResume(event.target.files?.[0] ?? null)}
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  PDF, DOC, or DOCX up to 5 MB.
+                  {user.resumeUrl ? (
+                    <>
+                      {' '}
+                      <a href={user.resumeUrl} target="_blank" rel="noreferrer" className="font-semibold text-sky-600 hover:text-sky-500">
+                        View current resume
+                      </a>
+                    </>
+                  ) : null}
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

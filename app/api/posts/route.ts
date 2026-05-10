@@ -3,13 +3,23 @@ import { NextResponse } from 'next/server';
 import { unstable_cache } from 'next/cache';
 import prisma from '@/lib/prisma';
 import { awardCampusCred } from '@/lib/cred';
-import { supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { PUBLIC_POSTS_CACHE_TAG, revalidatePostViews } from '@/lib/post-cache';
 import type { PostType, Visibility } from '@prisma/client';
 
 const POST_TYPES = new Set(['TEXT', 'IMAGE', 'POLL', 'LINK']);
 const VISIBILITIES = new Set(['PUBLIC', 'CONNECTIONS', 'COLLEGE_ONLY']);
+const DAILY_POST_LIMIT = 3;
+
+function postWindowStart() {
+  return new Date(Date.now() - 24 * 60 * 60 * 1000);
+}
 
 async function uploadPostImages(files: File[], authorId: string) {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase Storage is not configured');
+  }
+
   const imageUrls: string[] = [];
 
   for (const file of files.slice(0, 4)) {
@@ -61,7 +71,7 @@ const getPosts = unstable_cache(
     return posts;
   },
   ['public-posts'],
-  { revalidate: 30 } // Cache for 30 seconds
+  { revalidate: 30, tags: [PUBLIC_POSTS_CACHE_TAG] }
 );
 
 export async function GET(req: Request) {
@@ -86,7 +96,7 @@ export async function GET(req: Request) {
   }
 
   const postIds = posts.map((post) => post.id);
-  const [likedPosts, bookmarkedPosts] = await Promise.all([
+  const [likedPosts, bookmarkedPosts, postsInWindow] = await Promise.all([
     prisma.like.findMany({
       where: { userId: currentUser.id, postId: { in: postIds } },
       select: { postId: true },
@@ -95,6 +105,7 @@ export async function GET(req: Request) {
       where: { userId: currentUser.id, postId: { in: postIds } },
       select: { postId: true },
     }),
+    prisma.post.count({ where: { authorId: currentUser.id, createdAt: { gte: postWindowStart() } } }),
   ]);
 
   const likedPostIds = new Set(likedPosts.map((like) => like.postId));
@@ -110,6 +121,12 @@ export async function GET(req: Request) {
       isBookmarked: bookmarkedPostIds.has(post.id),
     })),
     nextCursor: hasMore ? page[page.length - 1]?.id ?? null : null,
+    postQuota: {
+      limit: DAILY_POST_LIMIT,
+      used: postsInWindow,
+      remaining: Math.max(0, DAILY_POST_LIMIT - postsInWindow),
+      windowHours: 24,
+    },
   });
 }
 
@@ -125,6 +142,21 @@ export async function POST(req: Request) {
   });
   if (!currentUser) {
     return NextResponse.json({ message: 'User not found' }, { status: 404 });
+  }
+
+  const postsInWindow = await prisma.post.count({
+    where: { authorId: currentUser.id, createdAt: { gte: postWindowStart() } },
+  });
+  if (postsInWindow >= DAILY_POST_LIMIT) {
+    return NextResponse.json({
+      message: 'Daily post limit reached. You can create up to 3 posts every 24 hours.',
+      postQuota: {
+        limit: DAILY_POST_LIMIT,
+        used: postsInWindow,
+        remaining: 0,
+        windowHours: 24,
+      },
+    }, { status: 429 });
   }
 
   const contentType = req.headers.get('content-type') ?? '';
@@ -213,5 +245,15 @@ export async function POST(req: Request) {
   });
 
   await awardCampusCred(currentUser.id, 5, 'created_post');
-  return NextResponse.json(post);
+  revalidatePostViews();
+
+  return NextResponse.json({
+    ...post,
+    postQuota: {
+      limit: DAILY_POST_LIMIT,
+      used: postsInWindow + 1,
+      remaining: Math.max(0, DAILY_POST_LIMIT - postsInWindow - 1),
+      windowHours: 24,
+    },
+  });
 }

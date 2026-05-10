@@ -26,12 +26,18 @@ model User {
   currentCompany     String?
   linkedinUrl        String?
   githubUrl          String?
+  portfolioUrl       String?
+  resumeUrl          String?
   avatarUrl          String?
   campusCred         Int                    @default(0)
   isAvailable        Boolean                @default(true)
   posts              Post[]
   sentMessages       Message[]              @relation("SentMessages")
   receivedMessages   Message[]              @relation("ReceivedMessages")
+  sentMessageRequests MessageRequest[]       @relation("SentMessageRequests")
+  receivedMessageRequests MessageRequest[]   @relation("ReceivedMessageRequests")
+  blockedUsers       UserBlock[]            @relation("BlockedUsers")
+  blockedBy          UserBlock[]            @relation("BlockedBy")
   eventRegistrations EventRegistration[]
   organizedEvents    Event[]
   capabilities       UserCapability[]
@@ -302,6 +308,35 @@ enum Role {
   ALUMNI
 }
 
+model MessageRequest {
+  id             String               @id @default(cuid())
+  requester      User                 @relation("SentMessageRequests", fields: [requesterId], references: [id])
+  requesterId    String
+  receiver       User                 @relation("ReceivedMessageRequests", fields: [receiverId], references: [id])
+  receiverId     String
+  initialMessage String
+  status         MessageRequestStatus @default(PENDING)
+  respondedAt    DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@unique([requesterId, receiverId])
+  @@index([receiverId, status, createdAt])
+  @@index([requesterId, status, createdAt])
+}
+
+model UserBlock {
+  id        String   @id @default(cuid())
+  blocker   User     @relation("BlockedUsers", fields: [blockerId], references: [id])
+  blockerId String
+  blocked   User     @relation("BlockedBy", fields: [blockedId], references: [id])
+  blockedId String
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+}
+
 enum Capability {
   ORGANIZER
   MENTOR
@@ -328,6 +363,12 @@ enum MentorStatus {
   ACTIVE
   DECLINED
   ENDED
+}
+
+enum MessageRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
 }
 
 enum EventType {

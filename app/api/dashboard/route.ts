@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
-import { isSuitableMatch, scoreMentorMatch } from '@/lib/match-score';
+import { getMentorMatches } from '@/lib/mentor-matches';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,37 +76,8 @@ export async function GET() {
     let roleSpecificData = {};
 
     if (user.role === 'STUDENT') {
-      const matchCandidateFilters = [
-        ...(user.domain ? [{ domain: user.domain }] : []),
-        ...(user.skills.length > 0 ? [{ skills: { hasSome: user.skills } }] : []),
-      ];
-
-      // Simplified alumni matches for students
-      const alumniMatches = await prisma.user.findMany({
-        where: {
-          role: 'ALUMNI',
-          isAvailable: true,
-          ...(matchCandidateFilters.length > 0 ? { OR: matchCandidateFilters } : {}),
-        },
-        orderBy: { campusCred: 'desc' },
-        take: 10,
-        select: {
-          id: true,
-          name: true,
-          currentCompany: true,
-          avatarUrl: true,
-          campusCred: true,
-          domain: true,
-          skills: true,
-        },
-      });
       roleSpecificData = {
-        alumniMatches: alumniMatches
-          .map((mentor) => ({ ...mentor, matchScore: scoreMentorMatch(user, mentor) }))
-          .filter((mentor) => isSuitableMatch(mentor.matchScore))
-          .sort((a, b) => b.matchScore - a.matchScore || b.campusCred - a.campusCred || a.name.localeCompare(b.name))
-          .slice(0, 5)
-          .map(({ matchScore, ...mentor }) => mentor),
+        alumniMatches: await getMentorMatches(user, 5),
       };
     } else if (user.role === 'ALUMNI') {
       // Simplified mentorship requests for alumni

@@ -2,6 +2,49 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { syncIdentityCapabilities } from '@/lib/capabilities';
+import { awardCampusCredOnce } from '@/lib/cred';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+
+const MAX_RESUME_SIZE = 5 * 1024 * 1024;
+const RESUME_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
+
+function cleanOptionalUrl(value: unknown) {
+  const text = String(value ?? '').trim();
+  if (!text) return null;
+  try {
+    const url = new URL(text);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return '';
+    return url.toString();
+  } catch {
+    return '';
+  }
+}
+
+async function uploadResume(file: File, userId: string) {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Resume upload needs Supabase configuration.');
+  }
+  if (!RESUME_TYPES.has(file.type)) {
+    throw new Error('Resume must be a PDF, DOC, or DOCX file.');
+  }
+  if (file.size > MAX_RESUME_SIZE) {
+    throw new Error('Resume must be 5 MB or smaller.');
+  }
+
+  const extension = file.name.split('.').pop() || 'pdf';
+  const path = `${userId}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage
+    .from('resumes')
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw new Error(error.message);
+
+  const { data } = supabase.storage.from('resumes').getPublicUrl(path);
+  return data.publicUrl;
+}
 
 export async function PUT(req: Request) {
   try {
@@ -10,11 +53,35 @@ export async function PUT(req: Request) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
+    const contentType = req.headers.get('content-type') ?? '';
+    let body: Record<string, any>;
+    let resumeFile: File | null = null;
+
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await req.formData();
+      body = {
+        role: formData.get('role'),
+        college: formData.get('college'),
+        branch: formData.get('branch'),
+        graduationYear: formData.get('graduationYear'),
+        domain: formData.get('domain'),
+        skills: JSON.parse(String(formData.get('skills') ?? '[]')),
+        bio: formData.get('bio'),
+        currentCompany: formData.get('currentCompany'),
+        isAvailable: formData.get('isAvailable') === 'true',
+        portfolioUrl: formData.get('portfolioUrl'),
+      };
+      const maybeFile = formData.get('resume');
+      resumeFile = maybeFile instanceof File && maybeFile.size > 0 ? maybeFile : null;
+    } else {
+      body = await req.json();
+    }
+
     const { role, college, branch, graduationYear, domain, skills, bio, currentCompany, isAvailable } = body;
     const normalizedRole = ['STUDENT', 'ALUMNI'].includes(role) ? role : '';
     const normalizedDomain = domain;
     const normalizedSkills = skills;
+    const portfolioUrl = cleanOptionalUrl(body.portfolioUrl);
 
     if (!normalizedRole || !college) {
       return NextResponse.json({ message: 'Role and college are required' }, { status: 400 });
@@ -22,6 +89,9 @@ export async function PUT(req: Request) {
 
     if (!normalizedDomain || !Array.isArray(normalizedSkills) || normalizedSkills.length === 0) {
       return NextResponse.json({ message: 'Domain and skills are required for student and alumni profiles' }, { status: 400 });
+    }
+    if (portfolioUrl === '') {
+      return NextResponse.json({ message: 'Portfolio link must be a valid HTTP or HTTPS URL.' }, { status: 400 });
     }
 
     const existingUser = await prisma.user.findUnique({ where: { clerkId: userId } });
@@ -44,6 +114,8 @@ export async function PUT(req: Request) {
       return NextResponse.json({ message: 'Student graduation year must be after the current year' }, { status: 400 });
     }
 
+    const resumeUrl = resumeFile ? await uploadResume(resumeFile, existingUser.id) : existingUser.resumeUrl;
+
     const user = await prisma.user.update({
       where: { clerkId: userId },
       data: {
@@ -56,11 +128,23 @@ export async function PUT(req: Request) {
         bio: bio || null,
         currentCompany: mentorCompany,
         isAvailable: availableForMentorship,
+        portfolioUrl,
+        resumeUrl,
       },
     });
 
     await syncIdentityCapabilities(user.id, user.role, availableForMentorship);
-    return NextResponse.json({ ...user, profileComplete: true });
+    const rewards = await Promise.all([
+      !existingUser.resumeUrl && user.resumeUrl
+        ? awardCampusCredOnce(user.id, 10, 'profile_resume_added')
+        : Promise.resolve(false),
+      !existingUser.portfolioUrl && user.portfolioUrl
+        ? awardCampusCredOnce(user.id, 10, 'profile_portfolio_added')
+        : Promise.resolve(false),
+    ]);
+
+    const awardedPoints = rewards.filter(Boolean).length * 10;
+    return NextResponse.json({ ...user, profileComplete: true, awardedPoints });
   } catch (error) {
     console.error('Profile update failed:', error);
     return NextResponse.json({ message: 'Profile update failed. Check server logs for details.' }, { status: 500 });
@@ -129,6 +213,8 @@ export async function DELETE() {
         });
 
         await tx.message.deleteMany({ where: { OR: [{ senderId: user.id }, { receiverId: user.id }] } });
+        await tx.messageRequest.deleteMany({ where: { OR: [{ requesterId: user.id }, { receiverId: user.id }] } });
+        await tx.userBlock.deleteMany({ where: { OR: [{ blockerId: user.id }, { blockedId: user.id }] } });
         await tx.mentorRelation.deleteMany({ where: { OR: [{ mentorId: user.id }, { menteeId: user.id }] } });
         await tx.orbit.deleteMany({ where: { OR: [{ fromUserId: user.id }, { toUserId: user.id }] } });
         await tx.eventRegistration.deleteMany({ where: { userId: user.id } });
@@ -186,7 +272,8 @@ export async function DELETE() {
       });
     }
 
-    await clerkClient.users.deleteUser(userId);
+    const clerk = clerkClient();
+    await clerk.users.deleteUser(userId);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
+import { revalidatePostViews } from '@/lib/post-cache';
 
 export async function PUT(
   request: Request,
@@ -14,7 +15,14 @@ export async function PUT(
 
     const { body, imageUrls, linkUrl } = await request.json();
 
-    // Check if user owns the post
+    const currentUser = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      select: { id: true },
+    });
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
     const post = await prisma.post.findUnique({
       where: { id: params.id },
       select: { authorId: true },
@@ -24,7 +32,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
-    if (post.authorId !== userId) {
+    if (post.authorId !== currentUser.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -37,6 +45,7 @@ export async function PUT(
         updatedAt: new Date(),
       },
     });
+    revalidatePostViews();
 
     return NextResponse.json(updatedPost);
   } catch (error) {
@@ -55,28 +64,51 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user owns the post
+    const currentUser = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      select: { id: true },
+    });
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
     const post = await prisma.post.findUnique({
       where: { id: params.id },
-      select: { authorId: true },
+      select: {
+        authorId: true,
+        poll: {
+          select: {
+            id: true,
+            options: { select: { id: true } },
+          },
+        },
+      },
     });
 
     if (!post) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
-    if (post.authorId !== userId) {
+    if (post.authorId !== currentUser.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Delete related records first (likes, comments, shares, bookmarks)
+    const pollOptionIds = post.poll?.options.map((option) => option.id) ?? [];
     await prisma.$transaction([
+      ...(post.poll
+        ? [
+            prisma.pollVote.deleteMany({ where: { optionId: { in: pollOptionIds } } }),
+            prisma.pollOption.deleteMany({ where: { pollId: post.poll.id } }),
+            prisma.poll.delete({ where: { id: post.poll.id } }),
+          ]
+        : []),
       prisma.like.deleteMany({ where: { postId: params.id } }),
       prisma.comment.deleteMany({ where: { postId: params.id } }),
       prisma.share.deleteMany({ where: { postId: params.id } }),
       prisma.bookmark.deleteMany({ where: { postId: params.id } }),
       prisma.post.delete({ where: { id: params.id } }),
     ]);
+    revalidatePostViews();
 
     return NextResponse.json({ success: true });
   } catch (error) {

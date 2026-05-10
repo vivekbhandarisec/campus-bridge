@@ -31,21 +31,19 @@ export async function GET() {
   });
   if (!currentUser) return NextResponse.json({ message: 'User not found' }, { status: 404 });
 
-  const rows = await prisma.$queryRaw<Array<{
-    status: string;
-    organization: string;
-    roleTitle: string;
-    createdAt: Date;
-  }>>`
-    SELECT status, organization, "roleTitle", "createdAt"
-    FROM "OrganizerVerification"
-    WHERE "userId" = ${currentUser.id}
-    LIMIT 1
-  `;
+  const verification = await prisma.organizerVerification.findUnique({
+    where: { userId: currentUser.id },
+    select: {
+      status: true,
+      organization: true,
+      roleTitle: true,
+      createdAt: true,
+    },
+  });
 
   return NextResponse.json({
     canOrganize: hasAnyCapability(currentUser, ['ORGANIZER', 'ADMIN']),
-    verification: rows[0] ?? null,
+    verification,
   });
 }
 
@@ -88,24 +86,30 @@ export async function POST(req: Request) {
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`
-      INSERT INTO "OrganizerVerification" (
-        id, "userId", "fullName", "collegeEmail", organization, "roleTitle", reason, "contactLink", status, "reviewedAt", "updatedAt"
-      )
-      VALUES (
-        ${crypto.randomUUID()}, ${currentUser.id}, ${fullName}, ${collegeEmail || null}, ${organization}, ${roleTitle}, ${reason}, ${contactLink || null}, 'APPROVED', NOW(), NOW()
-      )
-      ON CONFLICT ("userId") DO UPDATE SET
-        "fullName" = EXCLUDED."fullName",
-        "collegeEmail" = EXCLUDED."collegeEmail",
-        organization = EXCLUDED.organization,
-        "roleTitle" = EXCLUDED."roleTitle",
-        reason = EXCLUDED.reason,
-        "contactLink" = EXCLUDED."contactLink",
-        status = 'APPROVED',
-        "reviewedAt" = NOW(),
-        "updatedAt" = NOW()
-    `;
+    await tx.organizerVerification.upsert({
+      where: { userId: currentUser.id },
+      update: {
+        fullName,
+        collegeEmail: collegeEmail || null,
+        organization,
+        roleTitle,
+        reason,
+        contactLink: contactLink || null,
+        status: 'APPROVED',
+        reviewedAt: new Date(),
+      },
+      create: {
+        userId: currentUser.id,
+        fullName,
+        collegeEmail: collegeEmail || null,
+        organization,
+        roleTitle,
+        reason,
+        contactLink: contactLink || null,
+        status: 'APPROVED',
+        reviewedAt: new Date(),
+      },
+    });
 
     await tx.userCapability.upsert({
       where: { userId_capability: { userId: currentUser.id, capability: 'ORGANIZER' } },

@@ -30,7 +30,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Username must be 3–20 characters, start with a letter, and only include letters, numbers, or underscores.' }, { status: 400 });
     }
 
-    const clerkUser = await clerkClient.users.getUser(userId);
+    const clerk = clerkClient();
+    const clerkUser = await clerk.users.getUser(userId);
     const email = clerkUser.primaryEmailAddress?.emailAddress || clerkUser.emailAddresses?.[0]?.emailAddress || '';
     const name = clerkUser.fullName || 'CampusBridge member';
 

@@ -17,6 +17,9 @@ interface SearchProfileCardProps {
     bio: string | null;
     campusCred: number;
     avatarUrl: string | null;
+    canMessage?: boolean;
+    sameCollege?: boolean;
+    messageRestriction?: string | null;
   };
 }
 
@@ -32,14 +35,24 @@ export function SearchProfileCard({ user }: SearchProfileCardProps) {
         <div className="flex items-start justify-between gap-3">
           <Avatar src={user.avatarUrl} name={user.name} className={cn('h-14 w-14 shrink-0 border-4 border-white shadow-soft', identity.ring)} />
           <div className="flex gap-2 mt-6">
-            <Link
-              href={`/messages?user=${user.id}`}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] border border-slate-200 bg-white text-slate-600 shadow-soft transition hover:border-sky-500/30 hover:text-sky-500"
-              aria-label={`Send message to ${user.name}`}
-              title="Send message"
-            >
-              <MessageCircle className="h-4 w-4" />
-            </Link>
+            {user.canMessage === false ? (
+              <span
+                className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] border border-slate-200 bg-slate-100 text-slate-300"
+                aria-label={user.messageRestriction || 'Messaging unavailable'}
+                title={user.messageRestriction || 'Messaging unavailable'}
+              >
+                <MessageCircle className="h-4 w-4" />
+              </span>
+            ) : (
+              <Link
+                href={`/messages?user=${user.id}`}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] border border-slate-200 bg-white text-slate-600 shadow-soft transition hover:border-sky-500/30 hover:text-sky-500"
+                aria-label={`Send message to ${user.name}`}
+                title="Send message request"
+              >
+                <MessageCircle className="h-4 w-4" />
+              </Link>
+            )}
             <Link
               href={`/profile/${user.id}`}
               className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] border border-slate-200 bg-white text-slate-600 shadow-soft transition hover:border-sky-500/30 hover:text-sky-500"
@@ -60,6 +73,9 @@ export function SearchProfileCard({ user }: SearchProfileCardProps) {
           <div className="mt-2 flex flex-wrap gap-2">
             {roleLabel ? (
               <Badge className={cn('uppercase tracking-wide', identity.badge)}>{roleLabel}</Badge>
+            ) : null}
+            {user.sameCollege ? (
+              <Badge className="border-teal-600/20 bg-teal-50 text-teal-700">Same College</Badge>
             ) : null}
             {user.domain ? (
               <Badge className="border-teal-600/20 bg-teal-50 text-teal-700">{user.domain}</Badge>

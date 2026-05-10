@@ -14,7 +14,7 @@ export function Navbar({ role, capabilities = [] }: { role: Role | null; capabil
     { href: '/feed', label: 'Feed', icon: Home },
     { href: '/dashboard', label: 'Mentor Hub', icon: Gauge, roles: ['ALUMNI'] },
     { href: '/search', label: 'Search', icon: Search },
-    { href: '/match', label: 'Match', icon: Sparkles },
+    { href: '/match', label: 'Match', icon: Sparkles, roles: ['STUDENT'] },
     { href: '/events', label: 'Events', icon: CalendarDays },
     { href: '/leaderboard', label: 'CampusCred', icon: Medal, roles: ['STUDENT', 'ALUMNI'] },
     { href: '/messages', label: 'Messages', icon: MessageSquare },

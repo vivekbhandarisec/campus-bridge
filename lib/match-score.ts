@@ -1,4 +1,4 @@
-export const MIN_MATCH_SCORE = 52;
+export const MIN_MATCH_SCORE = 42;
 
 type MatchProfile = {
   domain: string | null;
@@ -15,7 +15,7 @@ export function normalizeMatchValue(value: string) {
   return value.trim().toLowerCase().replace(/[_\s]+/g, '-');
 }
 
-const DOMAIN_FAMILIES: Record<string, string[]> = {
+export const DOMAIN_FAMILIES: Record<string, string[]> = {
   security: ['cybersecurity', 'ethical-hacking', 'ctf'],
   development: ['frontend', 'backend', 'full-stack', 'mobile', 'game-development', 'open-source'],
   data: ['data-science', 'data-engineering', 'ml'],
@@ -76,8 +76,8 @@ export function scoreMentorMatch(student: MatchProfile, mentor: MatchProfile) {
   const mentorDomain = mentor.domain ? normalizeMatchValue(mentor.domain) : '';
   const studentFamily = studentDomain ? familyForDomain(studentDomain) : '';
   const mentorFamily = mentorDomain ? familyForDomain(mentorDomain) : '';
-  const exactDomainScore = studentDomain && mentorDomain && studentDomain === mentorDomain ? 42 : 0;
-  const domainFamilyScore = !exactDomainScore && studentFamily && mentorFamily && studentFamily === mentorFamily ? 30 : 0;
+  const exactDomainScore = studentDomain && mentorDomain && studentDomain === mentorDomain ? 45 : 0;
+  const domainFamilyScore = !exactDomainScore && studentFamily && mentorFamily && studentFamily === mentorFamily ? 38 : 0;
 
   const studentSkills = new Set(student.skills.map(normalizeMatchValue));
   const mentorSkills = mentor.skills.map(normalizeMatchValue);

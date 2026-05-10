@@ -22,6 +22,8 @@ export default async function ProfilePage({ params }: { params: { id: string } }
       currentCompany: true,
       linkedinUrl: true,
       githubUrl: true,
+      portfolioUrl: true,
+      resumeUrl: true,
       avatarUrl: true,
       campusCred: true,
       skills: true,
@@ -107,6 +109,26 @@ export default async function ProfilePage({ params }: { params: { id: string } }
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
               <p className="text-sm text-slate-500">GitHub</p>
               <p className="mt-2 text-sm text-slate-900">{user.githubUrl || 'Not linked'}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-sm text-slate-500">Portfolio</p>
+              {user.portfolioUrl ? (
+                <a href={user.portfolioUrl} target="_blank" rel="noreferrer" className="mt-2 block break-words text-sm font-semibold text-sky-600 hover:text-sky-500">
+                  {user.portfolioUrl}
+                </a>
+              ) : (
+                <p className="mt-2 text-sm text-slate-900">Not linked</p>
+              )}
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-sm text-slate-500">Resume</p>
+              {user.resumeUrl ? (
+                <a href={user.resumeUrl} target="_blank" rel="noreferrer" className="mt-2 block text-sm font-semibold text-sky-600 hover:text-sky-500">
+                  View resume
+                </a>
+              ) : (
+                <p className="mt-2 text-sm text-slate-900">Not uploaded</p>
+              )}
             </div>
           </div>
         </div>

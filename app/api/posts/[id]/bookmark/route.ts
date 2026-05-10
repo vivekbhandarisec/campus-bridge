@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { revalidatePostViews } from '@/lib/post-cache';
 
 async function getCurrentUser() {
   const { userId } = auth();
@@ -17,6 +18,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     update: {},
     create: { userId: currentUser.id, postId: params.id },
   });
+  revalidatePostViews();
 
   return NextResponse.json({ bookmarked: true });
 }
@@ -26,5 +28,6 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   if (!currentUser) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
   await prisma.bookmark.deleteMany({ where: { userId: currentUser.id, postId: params.id } });
+  revalidatePostViews();
   return NextResponse.json({ bookmarked: false });
 }

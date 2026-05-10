@@ -16,6 +16,17 @@ export async function awardCampusCred(userId: string, points: number, reason: st
   ]);
 }
 
+export async function awardCampusCredOnce(userId: string, points: number, reason: string) {
+  const existing = await prisma.credEvent.findFirst({
+    where: { userId, reason },
+    select: { id: true },
+  });
+  if (existing) return false;
+
+  await awardCampusCred(userId, points, reason);
+  return true;
+}
+
 export async function awardBadge({
   userId,
   eventId,

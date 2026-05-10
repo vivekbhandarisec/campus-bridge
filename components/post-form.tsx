@@ -8,15 +8,14 @@ import { Select } from './ui/select';
 import { Textarea } from './ui/textarea';
 
 const types = [
-  { value: 'GENERAL', label: 'General' },
-  { value: 'ADVICE', label: 'Advice' },
-  { value: 'OPPORTUNITY', label: 'Opportunity' },
+  { value: 'TEXT', label: 'Text' },
+  { value: 'LINK', label: 'Link' },
 ];
 
 export function PostForm() {
   const router = useRouter();
   const [content, setContent] = useState('');
-  const [type, setType] = useState('GENERAL');
+  const [type, setType] = useState('TEXT');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -30,11 +29,11 @@ export function PostForm() {
       const response = await fetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, type }),
+        body: JSON.stringify({ body: content, type }),
       });
       if (!response.ok) throw new Error('Unable to post');
       setContent('');
-      setType('GENERAL');
+      setType('TEXT');
       setMessage('Post published.');
       router.refresh();
     } catch (error) {

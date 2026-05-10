@@ -1,40 +1,24 @@
 import prisma from '@/lib/prisma';
-import { explainMentorMatch, getDomainFamily, isSuitableMatch, normalizeMatchValue, scoreMentorMatch } from '@/lib/match-score';
+import { DOMAIN_FAMILIES, explainMentorMatch, getDomainFamily, isSuitableMatch, normalizeMatchValue, scoreMentorMatch } from '@/lib/match-score';
 
 type StudentForMatch = {
   id: string;
+  college?: string | null;
   domain: string | null;
   skills: string[];
   bio?: string | null;
   headline?: string | null;
 };
 
-const familyDomains: Record<string, string[]> = {
-  security: ['cybersecurity', 'ethical-hacking', 'ctf'],
-  development: ['frontend', 'backend', 'full-stack', 'mobile', 'game-development', 'open-source'],
-  data: ['data-science', 'data-engineering', 'ml'],
-  infrastructure: ['devops', 'cloud', 'database'],
-  product: ['ui-ux', 'product-management'],
-  hardware: ['iot', 'embedded-systems', 'robotics', 'ar-vr'],
-  web3: ['web3'],
-  programming: ['competitive-programming'],
-  quality: ['qa-testing'],
-};
-
 export async function getMentorMatches(currentUser: StudentForMatch, limit = 10) {
   const domainFamily = getDomainFamily(currentUser.domain);
-  const relatedDomains = domainFamily ? familyDomains[domainFamily] ?? [currentUser.domain].filter(Boolean) : [];
-  const relevanceFilters = [
-    ...(currentUser.domain ? [{ domain: currentUser.domain }] : []),
-    ...(relatedDomains.length > 0 ? [{ domain: { in: relatedDomains } }] : []),
-    ...(currentUser.skills.length > 0 ? [{ skills: { hasSome: currentUser.skills } }] : []),
-  ];
+  const relatedDomains = domainFamily ? DOMAIN_FAMILIES[domainFamily] ?? [currentUser.domain].filter(Boolean) : [];
 
   const alumni = await prisma.user.findMany({
     where: {
       role: 'ALUMNI',
       id: { not: currentUser.id },
-      ...(relevanceFilters.length > 0 ? { OR: relevanceFilters } : {}),
+      ...(currentUser.college ? { college: currentUser.college } : {}),
     },
     select: {
       id: true,
@@ -50,6 +34,7 @@ export async function getMentorMatches(currentUser: StudentForMatch, limit = 10)
       isAvailable: true,
       _count: { select: { posts: true, badges: true } },
     },
+    take: 120,
   });
 
   return alumni
@@ -76,6 +61,10 @@ export async function getMentorMatches(currentUser: StudentForMatch, limit = 10)
       const aDomain = a.domain && currentUser.domain && normalizeMatchValue(a.domain) === normalizeMatchValue(currentUser.domain) ? 1 : 0;
       const bDomain = b.domain && currentUser.domain && normalizeMatchValue(b.domain) === normalizeMatchValue(currentUser.domain) ? 1 : 0;
       if (aDomain !== bDomain) return bDomain - aDomain;
+
+      const aFamily = a.domain && relatedDomains.includes(normalizeMatchValue(a.domain)) ? 1 : 0;
+      const bFamily = b.domain && relatedDomains.includes(normalizeMatchValue(b.domain)) ? 1 : 0;
+      if (aFamily !== bFamily) return bFamily - aFamily;
 
       const studentSkills = new Set(currentUser.skills.map(normalizeMatchValue));
       const aOverlap = a.skills.map(normalizeMatchValue).filter((skill) => studentSkills.has(skill)).length;

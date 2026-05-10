@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { revalidatePostViews } from '@/lib/post-cache';
 
 async function getCurrentUser() {
   const { userId } = auth();
@@ -56,6 +57,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     },
     include: { author: { select: { id: true, name: true, avatarUrl: true, role: true } } },
   });
+  revalidatePostViews();
 
   return NextResponse.json(comment);
 }
